@@ -1,0 +1,23 @@
+{
+	"f2e-grid-enhancements": {
+		"name": "PF2e & SF2e - Grid Enhancements",
+		"compatibility-warning": "Potential incompatability with",
+		"template": {
+			"hex": "Hex Template",
+			"square": "Square Template",
+			"point": "Point Template",
+			"emanation": "Emanation Template",
+			"burst": "Burst Template",
+			"cone": "Cone Template",
+			"line": "Line Template"
+		},
+		"setting": {
+			"hex-cone-template-angle-name": "Hex Cone Template Angle",
+			"hex-cone-template-angle-hint": "The default internal angle to use for the cone template on hex grids.",
+			"square-cone-template-angle-name": "Square Cone Template Angle",
+			"square-cone-template-angle-hint": "The default internal angle to use for the cone template on square grids.",
+			"gridless-cone-template-angle-name": "Gridless Cone Template Angle",
+			"gridless-cone-template-angle-hint": "The default internal angle to use for the cone template on gridless grids."
+		}
+	}
+}

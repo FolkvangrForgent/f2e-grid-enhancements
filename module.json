@@ -1,0 +1,51 @@
+{
+	"id": "f2e-grid-enhancements",
+	"title": "PF2e & SF2e - Grid Enhancements",
+	"description": "A collection of enhancements to make using hex, gridless and square maps in Pathfinder2e and Starfiner2e a better experience.",
+	"version": "#{VERSION}#",
+	"compatibility": {
+		"minimum": "13.342",
+		"verified": "13.342",
+		"maximum": "13"
+	},
+	"authors": [
+		{
+			"name": "FolkvangrForgent"
+		}
+	],
+	"relationships": {
+		"systems": [
+			{
+				"id": "pf2e",
+				"type": "system",
+				"compatibility": {
+					"minimum": "7.0.6",
+					"verified": "7.0.6"
+				}
+			}
+		],
+		"requires": [
+			{
+				"id": "lib-wrapper",
+				"type": "module",
+				"compatibility": {
+					"minimum": "1.0.0.0",
+					"verified": "1.13.2.0"
+				}
+			}
+		]
+	},
+	"esmodules": [
+		"scripts/main.js"
+	],
+	"languages": [
+		{
+			"lang": "en",
+			"name": "English",
+			"path": "languages/en.json"
+		}
+	],
+	"url": "#{URL}#",
+	"manifest": "#{MANIFEST}#",
+	"download": "#{DOWNLOAD}#"
+}
