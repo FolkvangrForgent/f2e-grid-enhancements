@@ -209,3 +209,74 @@ export function MeasuredTemplate_layer__onDragLeftMove(wrapped, self, event) {
 	}
 	interaction.preview.renderFlags.set({refreshShape: true});
 }
+
+export function Scene_document_canHaveAuras(wrapped, self) {
+	return true;
+}
+
+export function Aura_renderer_draw(wrapped, self, showBorder) {}
+
+// TODO support 3D hex columns
+export function Aura_token_containsToken(wrapped, self, token) {
+	// If either token is hidden or not rendered, return false early
+	if (self.token.hidden || token.hidden) {
+		return false;
+	}
+	// If the token is the one emitting the aura, return true early
+	if (token === self.token) {
+		return true;
+	}
+	// get aura and token offsets
+	const token_offsets = token.getOccupiedGridSpaceOffsets();
+	const aura_radius = (self.radius / self.token.scene.grid.distance);
+	const aura_offsets = self.token.getOccupiedGridSpaceOffsets({x: self.token.x - (self.token.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.scene.grid.size * aura_radius, y: self.token.y - (self.token.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.scene.grid.size * aura_radius, width: (self.token.width < 1 ? 1 : self.token.width) + aura_radius * 2, height: (self.token.height < 1 ? 1 : self.token.height) + aura_radius * 2});
+	// setup polygons to test against
+	const polygonBackends = []
+	if (self.traits.includes("auditory")) {
+		polygonBackends.push(CONFIG.Canvas.polygonBackends.sound.create(self.token.center, {
+			type: "sound",
+			source: new foundry.canvas.sources.PointSoundSource({object: self.token.object})
+		}));
+	}
+	if (self.traits.includes("visual") || !self.traits.includes("auditory") && !self.traits.includes("visual")) {
+		polygonBackends.push(CONFIG.Canvas.polygonBackends.sight.create(self.token.center, {
+			type: "sight",
+			source: new foundry.canvas.sources.PointVisionSource({object: self.token.object})
+		}));
+	}
+	if (!self.traits.includes("auditory") && !self.traits.includes("visual")) {
+		polygonBackends.push(CONFIG.Canvas.polygonBackends.move.create(self.token.center, {
+			type: "move",
+			source: new foundry.canvas.sources.PointMovementSource({object: self.token.object})
+		}));
+	}
+	// compare offsets to see if token is contained in aura
+	for (const aura_offset of aura_offsets) {
+		for (const token_offset of token_offsets) {
+			if (aura_offset.i === token_offset.i && aura_offset.j === token_offset.j) {
+				for (const polygonBackend of polygonBackends) {
+					const point = self.token.scene.grid.getCenterPoint(token_offset);
+					if (polygonBackend.contains(point.x, point.y)) {
+						return true;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
+export function Aura_renderer_highlight(wrapped, self) {
+	const aura_radius = (self.radius / self.token.scene.grid.distance);
+	const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2});
+	for (const aura_offset of aura_offsets) {
+		const aura_point = self.token.scene.grid.getTopLeftPoint(aura_offset)
+		self.token.scene.grid.highlightPosition(self.highlightLayer.name, {
+			x: aura_point.x,
+			y: aura_point.y,
+			border: self.appearance.border?.color,
+			color: self.appearance.highlight.color,
+			alpha: self.appearance.highlight.alpha,
+		});
+	}
+}

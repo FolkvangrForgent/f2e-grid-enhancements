@@ -3,41 +3,32 @@ import * as hex from './grid/hex.js';
 import * as square from './grid/square.js';
 import * as gridless from './grid/gridless.js';
 
-// yolo just override the layer class for now until pf2e devs tell me why this would be bad
-CONFIG.MeasuredTemplate.layerClass = CONFIG.Canvas.layers.templates.layerClass;
+CONFIG.F2e = {
+	Token: {
+		object: CONFIG.Token.objectClass.prototype
+	},
+	Scene: {
+		document: CONFIG.Scene.documentClass.prototype
+	},
+	MeasuredTemplate: {
+		layer: CONFIG.Canvas.layers.templates.layerClass.prototype,
+		layerFoundry: Object.getPrototypeOf(CONFIG.Canvas.layers.templates.layerClass.prototype),
+		object: CONFIG.MeasuredTemplate.objectClass.prototype
+	},
+}
 
-function compatibility_warning_message() {
+function compatibility_warning() {
 	if (game?.user?.isGM) {
-		ui.notifications.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + game.i18n.localize('f2e-grid-enhancements.compatibility-warning') + ' ' + (game?.version ?? '?') + ' or ' + (game?.system?.title ?? '?') + ' ' + (game?.system?.version  ?? '?') + '', {console: false});
+		if (!((game.system.id === "pf2e" && game.system.version === "7.0.6-beta" || game.system.id === "sf2e" && game.system.version === "7.0.0") && game.version === "13.342")) {
+			ui.notifications.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + game.i18n.localize('f2e-grid-enhancements.compatibility-warning') + ' ' + (game?.version ?? '?') + ' or ' + (game?.system?.title ?? '?') + ' ' + (game?.system?.version  ?? '?') + '', {console: false});
+		}
 	}
 }
 
-let compatibility_warning = foundry.utils.debounce(() => {
-	if (game.ready) {
-		compatibility_warning_message();
-	} else {
-		Hooks.once('ready', () => {
-			compatibility_warning_message();
-		});
-	}
-}, 1000)
-
-function patch(target_function_name, target_function_known_hash, patch_function) {
-	const target_function_string = eval(target_function_name).toString();
-	const target_function_calculated_hash = SparkMD5.hash(target_function_string);
-	let match = (target_function_calculated_hash == target_function_known_hash);
-	if (!match) {
-		console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' changed ( ' + target_function_known_hash + ' > ' + target_function_calculated_hash + ' ).\n\n' + target_function_string);
-		compatibility_warning();
-	}
-	libWrapper.register('f2e-grid-enhancements', target_function_name, patch_function, 'MIXED');
-	return match;
-}
-
-function patch_function(target_function_name, target_function_crc) {
+function patch_function(target_function_name) {
 	const split = target_function_name.split('.');
-	const base = split[1] + '_' + split[2].substring(0, (split[2].length - 5)) + '_' + split[4];
-	patch(target_function_name, target_function_crc, function(wrapped, ...args) {
+	const base = split[2] + '_' + split[3] + '_' + split[4];
+	libWrapper.register('f2e-grid-enhancements', target_function_name, function(wrapped, ...args) {
 		if (!canvas?.ready || !canvas?.grid) {
 			return wrapped(...args);
 		}
@@ -78,7 +69,7 @@ function patch_function(target_function_name, target_function_crc) {
 				return wrapped(...args);
 			}
 		}
-	});
+	}, 'MIXED');
 	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched for ' + [(hex[base] ? 'hex' : undefined), (gridless[base] ? 'gridless' : undefined), (square[base] ? 'square' : undefined), (all[base] ? 'all' : undefined)].filter(e => e !== undefined));
 }
 
@@ -89,42 +80,44 @@ async function review() {
 
 Hooks.once('libWrapper.Ready', () => {
 	// Return more accurate distance measurement
-	patch_function('CONFIG.Token.objectClass.prototype.distanceTo', 'c8ce3c052f4fb329d769495ecce53706');
+	patch_function('CONFIG.F2e.Token.object.distanceTo');
 	// Custom gridless elipse shape (generation)
-	patch_function('CONFIG.Token.objectClass.prototype.getShape', '7c0ca540d43ec90bbf0ccd59860d8b9f');
+	patch_function('CONFIG.F2e.Token.object.getShape');
 	// Custom gridless elipse shape (rotation)
-	patch_function('CONFIG.Token.objectClass.prototype._refreshRotation', '990e9966a5be374839afd587a27a8daa');
+	patch_function('CONFIG.F2e.Token.object._refreshRotation');
 	// Simulate hex gridTemplates as to not interfere with base system setting & custom line hex template shape
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._computeShape', 'c1b3474ea4ecd5e0ed6d2c432605a1de');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._computeShape');
 	// Simulate hex gridTemplates as to not interfere with base system setting
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._refreshShape', 'aa7bece01f67f75253aabb78bf247916');
-	// Custom cone angle
-	patch_function('CONFIG.MeasuredTemplate.layerClass.prototype._onDragLeftStart', '3936597ef14b90fbb067c4aa6677236c');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshShape');
+	// Custom cone angle (use Foundry  to hijack template preview logic)
+	patch_function('CONFIG.F2e.MeasuredTemplate.layerFoundry._onDragLeftStart');
 	// Simulate hex gridTemplates as to not interfere with base system setting & Rotation of new hex templetes & Point max distance
-	patch_function('CONFIG.MeasuredTemplate.layerClass.prototype._onDragLeftMove', 'd1a2a952333c135fe8762b13421f5669');
+	patch_function('CONFIG.F2e.MeasuredTemplate.layer._onDragLeftMove');
 	// Rotation of placed hex templetes
-	patch_function('CONFIG.MeasuredTemplate.layerClass.prototype._onMouseWheel', '18f463b0bd532a26be871942353b571c');
+	patch_function('CONFIG.F2e.MeasuredTemplate.layer._onMouseWheel');
 	// Snap point of hex & square templates (remove snap)
-	patch_function('CONFIG.MeasuredTemplate.layerClass.prototype.getSnappedPoint', '4f15d2ca963123d1e768ef95242f06c0');
+	patch_function('CONFIG.F2e.MeasuredTemplate.layer.getSnappedPoint');
 	// Snap point of hex & square templates (add snap)
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._refreshPosition', '26f381059b38b3cf06d0253c627813e1');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshPosition');
 	// Custom rendering for templates
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._refreshTemplate', 'f872e30f9c8ed78c99460b1aa12bbfaa');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshTemplate');
 	// Custom hex line rendering for templates
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._getGridHighlightPositions', 'e611e2584d920c7079856e8122a9bf69');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._getGridHighlightPositions');
 	// Custom ruler text
-	patch_function('CONFIG.MeasuredTemplate.objectClass.prototype._refreshRulerText', '98930494eae3446edf4b869caeffdc0e');
+	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshRulerText');
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
+		compatibility_warning();
 	} else {
 		Hooks.once('ready', async function () {
 			review();
+			compatibility_warning();
 		});
 	}
 });
 
-// Module settings (requires CONFIG.MeasuredTemplate.layerClass.prototype._onDragLeftStart patch for custom cone angles)
+// Module settings
 Hooks.once('init', () => {
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-template-angle', {
 		name: 'f2e-grid-enhancements.setting.hex-cone-template-angle-name',
@@ -152,80 +145,118 @@ Hooks.once('init', () => {
 	});
 });
 
-// Custom template controls (requires CONFIG.MeasuredTemplate.layerClass.prototype._onDragLeftStart patch to function properly)
+// Custom template controls (requires CONFIG.F2e.MeasuredTemplate.layer._onDragLeftStart patch to function properly)
 Hooks.on("getSceneControlButtons", (controls) => {
 	// ensure canvas is ready and controls contain template
 	if (!canvas?.ready || !controls?.templates) {
 		return;
 	}
-	// setup edited controls
-	controls.templates.activeTool = "point"
-	controls.templates.tools = {
-		point: {
-			name: "point",
-			order: 0,
-			title: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
-			icon: canvas.grid.isHexagonal ? "fa-solid fa-hexagon" : canvas.grid.isSquare ? "fa-solid fa-square" : "fa-solid fa-circle",
-			// toolclip: {
-			// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-			// 	heading: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
-			// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
-			// }
+	// setup edited controls (just replacing tools and setting active didn't work nor did naming this templates...)
+	delete controls.templates;
+	controls.template = {
+		name: "template",
+		order: 2,
+		title: "CONTROLS.GroupMeasure",
+		icon: "fa-solid fa-ruler-combined",
+		visible: game.user.can("TEMPLATE_CREATE"),
+		onChange: (event, active) => {
+			if ( active ) canvas.templates.activate();
 		},
-		emanation: {
-			name: "emanation",
-			order: 2,
-			title: "f2e-grid-enhancements.template.emanation",
-			icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon-xmark" : "fa-regular fa-circle-x",
-			// toolclip: {
-			// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-			// 	heading: "f2e-grid-enhancements.template.emanation",
-			// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-			// }
+		onToolChange: () => canvas.templates.setAllRenderFlags({refreshState: true}),
+		tools: {
+			point: {
+				name: "point",
+				order: 1,
+				title: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
+				icon: canvas.grid.isHexagonal ? "fa-solid fa-hexagon" : canvas.grid.isSquare ? "fa-solid fa-square" : "fa-solid fa-circle",
+				// toolclip: {
+				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
+				// 	heading: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
+				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
+				// }
+			},
+			emanation: {
+				name: "emanation",
+				order: 2,
+				title: "f2e-grid-enhancements.template.emanation",
+				icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon-xmark" : "fa-regular fa-circle-x",
+				// toolclip: {
+				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
+				// 	heading: "f2e-grid-enhancements.template.emanation",
+				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
+				// }
+			},
+			"burst": {
+				name: "burst",
+				order: 3,
+				title: "f2e-grid-enhancements.template.burst",
+				icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon" : "fa-regular fa-circle",
+				// toolclip: {
+				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
+				// 	heading: "f2e-grid-enhancements.template.burst",
+				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
+				// }
+			},
+			cone: {
+				name: "cone",
+				order: 4,
+				title: "f2e-grid-enhancements.template.cone",
+				icon: "fa-regular fa-rotate-270 fa-triangle",
+				// toolclip: {
+				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
+				// 	heading: "f2e-grid-enhancements.template.cone",
+				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
+				// }
+			},
+			line: {
+				name: "line",
+				order: 5,
+				title: "f2e-grid-enhancements.template.line",
+				icon: "fa-regular fa-rotate-90 fa-pipe",
+				// toolclip: {
+				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
+				// 	heading: "f2e-grid-enhancements.template.line",
+				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
+				// }
+			},
+			clear: {
+				name: "clear",
+				order: 6,
+				title: "CONTROLS.MeasureClear",
+				icon: "fa-solid fa-trash",
+				visible: game.user.isGM,
+				onChange: () => canvas.templates.deleteAll(),
+				button: true
+			}
 		},
-		burst: {
-			name: "burst",
-			order: 3,
-			title: "f2e-grid-enhancements.template.burst",
-			icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon" : "fa-regular fa-circle",
-			// toolclip: {
-			// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-			// 	heading: "f2e-grid-enhancements.template.burst",
-			// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-			// }
-		},
-		cone: {
-			name: "cone",
-			order: 4,
-			title: "f2e-grid-enhancements.template.cone",
-			icon: "fa-regular fa-rotate-270 fa-triangle",
-			// toolclip: {
-			// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-			// 	heading: "f2e-grid-enhancements.template.cone",
-			// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-			// }
-		},
-		line: {
-			name: "line",
-			order: 5,
-			title: "f2e-grid-enhancements.template.line",
-			icon: "fa-regular fa-rotate-90 fa-pipe",
-			// toolclip: {
-			// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-			// 	heading: "f2e-grid-enhancements.template.line",
-			// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-			// }
-		},
-		clear: {
-			name: "clear",
-			order: 6,
-			title: "CONTROLS.MeasureClear",
-			icon: "fa-solid fa-trash",
-			visible: game.user.isGM,
-			onChange: () => canvas.templates.deleteAll(),
-			button: true
-		}
+		activeTool: "point"
 	}
 });
 
-// TODO grid agnostic target helper
+const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
+	CONFIG.F2e.Aura = {
+		renderer: AuraRenderer,
+		token: TokenAura
+	}
+	patch_function('CONFIG.F2e.Aura.renderer.highlight');
+	patch_function('CONFIG.F2e.Aura.renderer.draw');
+	patch_function('CONFIG.F2e.Aura.token.containsToken');
+	// Overwrite for hex and griddless enabling auras on those grids
+	patch_function('CONFIG.F2e.Scene.document.canHaveAuras');
+}, 100);
+
+// TODO is this the best hook? pretty sure this only happens after canvas ready which is helpfull at least
+const aura_finding_hook = Hooks.on("refreshToken", (token, event) => {
+	if (token.auras.size > 0) {
+		const AuraRenderer = Object.getPrototypeOf(token.auras.entries().next().value[1])
+		const TokenAura = Object.getPrototypeOf(token.document.auras.entries().next().value[1])
+		if (AuraRenderer && TokenAura) {
+			aura_patcher(AuraRenderer, TokenAura);
+			Hooks.off("refreshToken", aura_finding_hook);
+		}
+	} else {
+		return;
+	}
+});
+
+// TODO grid agnostic target helper with v2 application
