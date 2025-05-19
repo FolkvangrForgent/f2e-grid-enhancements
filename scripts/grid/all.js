@@ -88,7 +88,7 @@ export function MeasuredTemplate_object__refreshRulerText(wrapped, self) {
 	}
 }
 
-export function MeasuredTemplate_layer__onDragLeftStart(wrapped, self, event) {
+export function MeasuredTemplate_layerFoundry__onDragLeftStart(wrapped, self, event) {
 	self.clearPreviewContainer();
 	const interaction = event.interactionData;
 	// Snap the origin to the grid

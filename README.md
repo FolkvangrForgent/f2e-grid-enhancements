@@ -8,10 +8,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 **WARNING** - This module uses a lot of function patching and so it is suggested to run it on the exact version of FoundryVTT and SF2e or PF2e that it is verified on.
 
-## Known issue
-
-Waiting for FVTT 13 Stable 3 to fix https://github.com/foundryvtt/foundryvtt/issues/12761 until then there will be issues using the Custom Template Measurement Controls just after refresh. Just press the buttons a few times and the problem should resolve itself.
-
 ## Features
 
 ### General Improvements
@@ -49,21 +45,21 @@ Waiting for FVTT 13 Stable 3 to fix https://github.com/foundryvtt/foundryvtt/iss
     - Emulate `gridTemplates` behavior
 - Token
     - Custom `distanceTo` function for correct range calculation between tokens
+- Aura
+    - Support aura via extending system implementaion (requires yet unreleased beta or release)
 
 ### Gridless Improvements
 
 - Token
-    - Custom ellipse shape for token that rotates with the token
+    - Custom ellipse shape for token that rotates with the token (rotation currently broken)
+- Aura
+    - Support aura via extending system implementaion (requires yet unreleased beta or release)
 
 ### Languages
 
 - English
 
 ## Not implemented
-
-### Auras
-
-I am waiting on pf2e system support for extending the aura system. If they still refuse to accept my MR I will look into alternative ways to support auras. At this point it is looking more likely that I will be required to dynamically catch the relevant objects but that's alot of work.
 
 ### Flanking
 
