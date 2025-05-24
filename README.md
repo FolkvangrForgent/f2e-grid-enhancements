@@ -59,6 +59,8 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 - English
 
+- Polish
+
 ## Not implemented
 
 ### Flanking
