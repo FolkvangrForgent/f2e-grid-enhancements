@@ -4,8 +4,8 @@
 	"description": "A collection of enhancements to make using hex, gridless and square maps in Pathfinder2e and Starfiner2e a better experience.",
 	"version": "#{VERSION}#",
 	"compatibility": {
-		"minimum": "13.342",
-		"verified": "13.342",
+		"minimum": "13.345",
+		"verified": "13.345",
 		"maximum": "13"
 	},
 	"authors": [
@@ -19,8 +19,8 @@
 				"id": "pf2e",
 				"type": "system",
 				"compatibility": {
-					"minimum": "7.0.6",
-					"verified": "7.0.6"
+					"minimum": "7.2.0",
+					"verified": "7.2.0"
 				}
 			}
 		],
@@ -43,7 +43,7 @@
 			"lang": "en",
 			"name": "English",
 			"path": "languages/en.json"
-		},		
+		},
 		{
 			"lang": "pl",
 			"name": "Polski",

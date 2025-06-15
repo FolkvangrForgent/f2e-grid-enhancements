@@ -19,7 +19,7 @@ CONFIG.F2e = {
 
 function compatibility_warning() {
 	if (game?.user?.isGM) {
-		if (!((game.system.id === "pf2e" && game.system.version === "7.0.6-beta" || game.system.id === "sf2e" && game.system.version === "7.0.0") && game.version === "13.342")) {
+		if (!((game.system.id === "pf2e" && game.system.version === "7.2.0" || game.system.id === "sf2e" && game.system.version === "7.2.0") && game.version === "13.345")) {
 			ui.notifications.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + game.i18n.localize('f2e-grid-enhancements.compatibility-warning') + ' ' + (game?.version ?? '?') + ' or ' + (game?.system?.title ?? '?') + ' ' + (game?.system?.version  ?? '?') + '', {console: false});
 		}
 	}
