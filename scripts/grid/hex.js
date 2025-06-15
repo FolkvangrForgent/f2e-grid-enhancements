@@ -21,13 +21,44 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 		// center point (and add elevation until PF2e point is 3D)
 		targetPoints.push(canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: 0}));
 	}
+	// setup polygons to test against for vision if relevant (overload of this function)
+	const polygonBackends = []
+	if (opts?.collision_types ?? false) {
+		if (opts.collision_types.includes("sound")) {
+			polygonBackends.push(CONFIG.Canvas.polygonBackends.sound.create(self.document.center, {
+				type: "sound",
+				source: new foundry.canvas.sources.PointSoundSource({object: self})
+			}));
+		}
+		if (opts.collision_types.includes("sight")) {
+			polygonBackends.push(CONFIG.Canvas.polygonBackends.sight.create(self.document.center, {
+				type: "sight",
+				source: new foundry.canvas.sources.PointVisionSource({object: self})
+			}));
+		}
+		if (opts.collision_types.includes("move")) {
+			polygonBackends.push(CONFIG.Canvas.polygonBackends.move.create(self.document.center, {
+				type: "move",
+				source: new foundry.canvas.sources.PointMovementSource({object: self})
+			}));
+		}
+	}
 	// calculate minimum distance
 	let distance = Infinity;
 	for (const origin of selfPoints) {
 		for (const destination of targetPoints) {
 			const distanceCandidate = canvas.grid.measurePath([origin, destination]).distance;
 			if (distanceCandidate < distance) {
-				distance = distanceCandidate;
+				if (polygonBackends.length == 0) {
+					distance = distanceCandidate;
+				} else {
+					for (const polygonBackend of polygonBackends) {
+						if (polygonBackend.contains(destination.x, destination.y)) {
+							distance = distanceCandidate;
+							break;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -226,57 +257,37 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	if (token === self.token) {
 		return true;
 	}
-	// get aura and token offsets
-	const token_offsets = token.getOccupiedGridSpaceOffsets();
-	const aura_radius = (self.radius / self.token.scene.grid.distance);
-	const aura_offsets = self.token.getOccupiedGridSpaceOffsets({x: self.token.x - (self.token.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.scene.grid.size * aura_radius, y: self.token.y - (self.token.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.scene.grid.size * aura_radius, width: (self.token.width < 1 ? 1 : self.token.width) + aura_radius * 2, height: (self.token.height < 1 ? 1 : self.token.height) + aura_radius * 2});
-	// setup polygons to test against
-	const polygonBackends = []
+	// decide what collision types to test against
+	const collision_types = []
 	if (self.traits.includes("auditory")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.sound.create(self.token.center, {
-			type: "sound",
-			source: new foundry.canvas.sources.PointSoundSource({object: self.token.object})
-		}));
+		collision_types.push("sound");
 	}
 	if (self.traits.includes("visual") || !self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.sight.create(self.token.center, {
-			type: "sight",
-			source: new foundry.canvas.sources.PointVisionSource({object: self.token.object})
-		}));
+		collision_types.push("sight");
 	}
 	if (!self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.move.create(self.token.center, {
-			type: "move",
-			source: new foundry.canvas.sources.PointMovementSource({object: self.token.object})
-		}));
+		collision_types.push("move");
 	}
-	// compare offsets to see if token is contained in aura
-	for (const aura_offset of aura_offsets) {
-		for (const token_offset of token_offsets) {
-			if (aura_offset.i === token_offset.i && aura_offset.j === token_offset.j) {
-				for (const polygonBackend of polygonBackends) {
-					const point = self.token.scene.grid.getCenterPoint(token_offset);
-					if (polygonBackend.contains(point.x, point.y)) {
-						return true;
-					}
-				}
-			}
-		}
+	// use custom distance to when checking if token is within aura
+	if (self.token.object.distanceTo(token.object, {reach: self.radius, collision_types: collision_types}) == 0) {
+		return true;
 	}
 	return false;
 }
 
 export function Aura_renderer_highlight(wrapped, self) {
-	const aura_radius = (self.radius / self.token.scene.grid.distance);
-	const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2});
-	for (const aura_offset of aura_offsets) {
-		const aura_point = self.token.scene.grid.getTopLeftPoint(aura_offset)
-		self.token.scene.grid.highlightPosition(self.highlightLayer.name, {
-			x: aura_point.x,
-			y: aura_point.y,
-			border: self.appearance.border?.color,
-			color: self.appearance.highlight.color,
-			alpha: self.appearance.highlight.alpha,
-		});
+	if (self.token.document.shape == CONST.TOKEN_SHAPES.ELLIPSE_1 || self.token.document.shape == CONST.TOKEN_SHAPES.ELLIPSE_2) {
+		const aura_radius = (self.radius / self.token.document.scene.grid.distance);
+		const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.document.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.document.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.document.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.document.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2});
+		for (const aura_offset of aura_offsets) {
+			const aura_point = self.token.document.scene.grid.getTopLeftPoint(aura_offset)
+			self.token.document.scene.grid.highlightPosition(self.highlightLayer.name, {
+				x: aura_point.x,
+				y: aura_point.y,
+				border: self.appearance.border?.color,
+				color: self.appearance.highlight.color,
+				alpha: self.appearance.highlight.alpha,
+			});
+		}
 	}
 }
