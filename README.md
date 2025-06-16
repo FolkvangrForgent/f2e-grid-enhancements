@@ -47,7 +47,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - Custom `distanceTo` function for correct range calculation between tokens
 - Aura
     - Support aura via extending system implementaion
-        - Trapezoid or Rectangle token shapes are not currently supported visually but should otherwise work
+        - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but should otherwise work
 
 ### Gridless Improvements
 
