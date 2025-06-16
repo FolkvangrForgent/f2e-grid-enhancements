@@ -10,7 +10,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 		selfPoints.push(point);
 	}
 	// calculate the target points
-	const targetPoints = []
+	let targetPoints = []
 	if (target instanceof CONFIG.Token.objectClass) {
 		for (const offset of target.document.getOccupiedGridSpaceOffsets()) {
 			const point = canvas.grid.getCenterPoint({i: offset.i, j: offset.j})
@@ -21,27 +21,40 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 		// center point (and add elevation until PF2e point is 3D)
 		targetPoints.push(canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: 0}));
 	}
-	// setup polygons to test against for vision if relevant (overload of this function)
-	const polygonBackends = []
-	if (opts?.collision_types ?? false) {
-		if (opts.collision_types.includes("sound")) {
-			polygonBackends.push(CONFIG.Canvas.polygonBackends.sound.create(self.document.center, {
-				type: "sound",
-				source: new foundry.canvas.sources.PointSoundSource({object: self})
-			}));
-		}
-		if (opts.collision_types.includes("sight")) {
-			polygonBackends.push(CONFIG.Canvas.polygonBackends.sight.create(self.document.center, {
-				type: "sight",
-				source: new foundry.canvas.sources.PointVisionSource({object: self})
-			}));
-		}
-		if (opts.collision_types.includes("move")) {
-			polygonBackends.push(CONFIG.Canvas.polygonBackends.move.create(self.document.center, {
-				type: "move",
-				source: new foundry.canvas.sources.PointMovementSource({object: self})
-			}));
-		}
+	// filter target points to those that are valid from token center if collision is wanted
+	if (opts?.collision_types?.length ?? 0 > 0) {
+		targetPoints = targetPoints.filter((targetPoint) => {
+			for (const collision_type of opts.collision_types) {
+				if (collision_type == "sound") {
+					if (!CONFIG.Canvas.polygonBackends.sound.testCollision(self.document.center, targetPoint, {
+						type: "sound",
+						mode: "any",
+						source: new foundry.canvas.sources.PointSoundSource({object: self})
+					})) {
+						return true;
+					}
+				}
+				if (collision_type == "sight") {
+					if (!CONFIG.Canvas.polygonBackends.sight.testCollision(self.document.center, targetPoint, {
+						type: "sight",
+						mode: "any",
+						source: new foundry.canvas.sources.PointVisionSource({object: self})
+					})) {
+						return true;
+					}
+				}
+				if (collision_type == "move") {
+					if (!CONFIG.Canvas.polygonBackends.move.testCollision(self.document.center, targetPoint, {
+						type: "move",
+						mode: "any",
+						source: new foundry.canvas.sources.PointMovementSource({object: self})
+					})) {
+						return true;
+					}
+				}
+			}
+			return false;
+		});
 	}
 	// calculate minimum distance
 	let distance = Infinity;
@@ -49,16 +62,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 		for (const destination of targetPoints) {
 			const distanceCandidate = canvas.grid.measurePath([origin, destination]).distance;
 			if (distanceCandidate < distance) {
-				if (polygonBackends.length == 0) {
-					distance = distanceCandidate;
-				} else {
-					for (const polygonBackend of polygonBackends) {
-						if (polygonBackend.contains(destination.x, destination.y)) {
-							distance = distanceCandidate;
-							break;
-						}
-					}
-				}
+				distance = distanceCandidate;
 			}
 		}
 	}
@@ -276,9 +280,10 @@ export function Aura_token_containsToken(wrapped, self, token) {
 }
 
 export function Aura_renderer_highlight(wrapped, self) {
-	if (self.token.document.shape == CONST.TOKEN_SHAPES.ELLIPSE_1 || self.token.document.shape == CONST.TOKEN_SHAPES.ELLIPSE_2) {
+	if (([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) || ([CONST.TOKEN_SHAPES.TRAPEZOID_1, CONST.TOKEN_SHAPES.TRAPEZOID_2, CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape) && self.token.document.width <= 2 && self.token.document.height <= 2)) {
+		const aura_shape = [CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.TRAPEZOID_1, CONST.TOKEN_SHAPES.RECTANGLE_1].includes(self.token.document.shape) ? CONST.TOKEN_SHAPES.ELLIPSE_1 : CONST.TOKEN_SHAPES.ELLIPSE_2;
 		const aura_radius = (self.radius / self.token.document.scene.grid.distance);
-		const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.document.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.document.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.document.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.document.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2});
+		const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.document.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.document.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.document.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.document.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2, shape: aura_shape});
 		for (const aura_offset of aura_offsets) {
 			const aura_point = self.token.document.scene.grid.getTopLeftPoint(aura_offset)
 			self.token.document.scene.grid.highlightPosition(self.highlightLayer.name, {
