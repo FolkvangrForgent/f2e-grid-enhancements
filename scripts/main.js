@@ -5,7 +5,8 @@ import * as gridless from './grid/gridless.js';
 
 CONFIG.F2e = {
 	Token: {
-		object: CONFIG.Token.objectClass.prototype
+		object: CONFIG.Token.objectClass.prototype,
+		document: CONFIG.Token.documentClass.prototype
 	},
 	Scene: {
 		document: CONFIG.Scene.documentClass.prototype
@@ -74,8 +75,10 @@ function patch_function(target_function_name) {
 }
 
 async function review() {
-	await game.scenes.active.unview();
-	await game.scenes.active.view();
+	if (game?.scenes?.active !== undefined) {
+		await game.scenes.active.unview();
+		await game.scenes.active.view();
+	}
 }
 
 Hooks.once('libWrapper.Ready', () => {
@@ -84,7 +87,7 @@ Hooks.once('libWrapper.Ready', () => {
 	// Custom gridless elipse shape (generation)
 	patch_function('CONFIG.F2e.Token.object.getShape');
 	// Custom gridless elipse shape (rotation)
-	patch_function('CONFIG.F2e.Token.object._refreshRotation');
+	patch_function('CONFIG.F2e.Token.document._onUpdate');
 	// Simulate hex gridTemplates as to not interfere with base system setting & custom line hex template shape
 	patch_function('CONFIG.F2e.MeasuredTemplate.object._computeShape');
 	// Simulate hex gridTemplates as to not interfere with base system setting

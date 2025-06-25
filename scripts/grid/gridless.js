@@ -23,10 +23,26 @@ export function Token_object_getShape(wrapped, self) {
 	return rotated_ellipse(self.document.width, self.document.height, self.document.rotation, self.scene.grid.size, 0, 0, 1);
 }
 
-// TODO fix? maybe just via hook idk
-export function Token_object__refreshRotation(wrapped, self) {
-	self._refreshShape();
-	wrapped();
+export function Token_document__onUpdate(wrapped, self, changed, options, userId) {
+	wrapped(changed, options, userId);
+	// It feels wrong to have to set these but I'm at my wits end
+	let refresh = false;
+	if (changed?.width !== undefined) {
+		refresh = true;
+		self.width = changed.width
+	}
+	if (changed?.height !== undefined) {
+		refresh = true;
+		self.height = changed.height
+	}
+	if (changed?.rotation !== undefined) {
+		refresh = true;
+		self.rotation = changed.rotation
+	}
+	if (refresh) {
+		self.object._refreshShape();
+		self.object._refreshBorder();
+	}
 }
 
 export function Scene_document_canHaveAuras(wrapped, self) {

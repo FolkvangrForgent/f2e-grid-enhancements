@@ -52,7 +52,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 ### Gridless Improvements
 
 - Token
-    - Custom ellipse shape for token that rotates with the token (rotation currently not working fully)
+    - Custom ellipse shape for token that rotates with the token
 - Aura
     - Support aura via extending system implementaion
 
