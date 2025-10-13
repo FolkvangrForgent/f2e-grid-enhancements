@@ -17,7 +17,9 @@
 			"square-cone-template-angle-name": "Kąt szablonu stożka siatki kwadratowej",
 			"square-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na siatkach kwadratowych.",
 			"gridless-cone-template-angle-name": "Kąt szablonu stożka bez siatki",
-			"gridless-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na scenach bez siatki."
+			"gridless-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na scenach bez siatki.",
+			"height-precentage-name": "Procent wysokości tokenu",
+			"height-precentage-hint": "Procent powierzchni siatki, który musi być zajęty, aby uwzględnić go w obliczeniach odległości."
 		}
 	}
 }
