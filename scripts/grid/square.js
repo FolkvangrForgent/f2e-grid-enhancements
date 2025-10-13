@@ -1,8 +1,3 @@
-// TODO support 3D square columns
-// export function Token_object_distanceTo(wrapped, self, target, opts) {
-// 	return wrapped(target, opts);
-// }
-
 export function MeasuredTemplate_layer_getSnappedPoint(wrapped, self, point) {
 	return point;
 }

@@ -1,8 +1,8 @@
 // TODO gridless edge to edge or edge to side options
 // TODO Support 3D elipsoid
-// export function Token_object_distanceTo(wrapped, self, target, opts) {
-// 	return wrapped(target, opts);
-// }
+export function Token_object_distanceTo(wrapped, self, target, opts) {
+	return wrapped(target, opts);
+}
 
 function rotated_ellipse(width, height, rotation, grid_size, x, y, ratio) {
 	const w = (width / 2) * grid_size;

@@ -1,3 +1,102 @@
+export function Token_object_distanceTo(wrapped, self, target, opts) {
+	// if target is self distance will always be 0
+	if (self === target) return 0;
+	// calculate the self points
+	const selfPoints = []
+	for (const offset of self.document.getOccupiedGridSpaceOffsets()) {
+		const point = canvas.grid.getCenterPoint({i: offset.i, j: offset.j});
+		point.elevation = Math.round(self.document.elevation / self.document.scene.grid.distance) * self.document.scene.grid.distance;
+		selfPoints.push(point);
+		if (globalThis.WallHeight !== undefined) {
+			const {bottom, top} = globalThis.WallHeight.getSourceElevationBounds(self.document);
+			const height = top - bottom;
+			const threshold = ((100 - game.settings.get('f2e-grid-enhancements', 'height-precentage')) / 100) % 1;
+			const max = Math.floor((height / self.document.scene.grid.distance) + threshold);
+			for (let i = 1; i < max; i++) {
+				const point_copy = {...point}
+				point_copy.elevation += self.document.scene.grid.distance * i;
+				selfPoints.push(point_copy);
+			}
+		}
+	}
+	// calculate the target points
+	let targetPoints = []
+	if (target instanceof CONFIG.Token.objectClass) {
+		for (const offset of target.document.getOccupiedGridSpaceOffsets()) {
+			const point = canvas.grid.getCenterPoint({i: offset.i, j: offset.j})
+			point.elevation = Math.round(target.document.elevation / target.document.scene.grid.distance) * target.document.scene.grid.distance
+			targetPoints.push(point);
+			if (globalThis.WallHeight !== undefined) {
+				const {bottom, top} = globalThis.WallHeight.getSourceElevationBounds(target.document);
+				const height = top - bottom;
+				const threshold = ((100 - game.settings.get('f2e-grid-enhancements', 'height-precentage')) / 100) % 1;
+				const max = Math.floor((height / target.document.scene.grid.distance) + threshold);
+				for (let i = 1; i < max; i++) {
+					const point_copy = {...point}
+					point_copy.elevation += target.document.scene.grid.distance * i;
+					targetPoints.push(point_copy);
+				}
+			}
+		}
+	} else {
+		// center point (and add elevation until PF2e point is 3D)
+		targetPoints.push(canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: 0}));
+	}
+	// filter target points to those that are valid from token center if collision is wanted (custom override for auras on hex)
+	if (opts?.collision_types?.length ?? 0 > 0) {
+		targetPoints = targetPoints.filter((targetPoint) => {
+			for (const collision_type of opts.collision_types) {
+				if (collision_type == "sound") {
+					if (!CONFIG.Canvas.polygonBackends.sound.testCollision(self.document.center, targetPoint, {
+						type: "sound",
+						mode: "any",
+						source: new foundry.canvas.sources.PointSoundSource({object: self})
+					})) {
+						return true;
+					}
+				}
+				if (collision_type == "sight") {
+					if (!CONFIG.Canvas.polygonBackends.sight.testCollision(self.document.center, targetPoint, {
+						type: "sight",
+						mode: "any",
+						source: new foundry.canvas.sources.PointVisionSource({object: self})
+					})) {
+						return true;
+					}
+				}
+				if (collision_type == "move") {
+					if (!CONFIG.Canvas.polygonBackends.move.testCollision(self.document.center, targetPoint, {
+						type: "move",
+						mode: "any",
+						source: new foundry.canvas.sources.PointMovementSource({object: self})
+					})) {
+						return true;
+					}
+				}
+			}
+			return false;
+		});
+	}
+	// calculate minimum distance
+	let distance = Infinity;
+	for (const origin of selfPoints) {
+		for (const destination of targetPoints) {
+			const distanceCandidate = canvas.grid.measurePath([origin, destination]).distance;
+			if (distanceCandidate < distance) {
+				distance = distanceCandidate;
+			}
+		}
+	}
+	// process reach
+	distance -= opts?.reach ?? 0;
+	// remove negative distances
+	if (distance < 0) {
+		distance = 0;
+	}
+	// return distance
+	return distance;
+}
+
 export function MeasuredTemplate_object__refreshTemplate(wrapped, self) {
 	// calculate ui scale
 	const scale = (canvas?.dimensions?.uiScale ?? 1);
