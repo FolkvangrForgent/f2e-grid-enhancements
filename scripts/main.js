@@ -20,7 +20,7 @@ CONFIG.F2e = {
 
 function compatibility_warning() {
 	if (game?.user?.isGM) {
-		if (!((game.system.id === "pf2e" && game.system.version === "7.2.0" || game.system.id === "sf2e" && game.system.version === "7.2.0") && game.version === "13.345")) {
+		if (!((game.system.id === "pf2e" && game.system.version === "7.6.2" || game.system.id === "sf2e" && game.system.version === "7.6.2") && game.version === "13.350")) {
 			ui.notifications.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + game.i18n.localize('f2e-grid-enhancements.compatibility-warning') + ' ' + (game?.version ?? '?') + ' or ' + (game?.system?.title ?? '?') + ' ' + (game?.system?.version  ?? '?') + '', {console: false});
 		}
 	}
@@ -76,8 +76,10 @@ function patch_function(target_function_name) {
 
 async function review() {
 	if (game?.scenes?.active !== undefined) {
-		await game.scenes.active.unview();
-		await game.scenes.active.view();
+		try {
+			await game.scenes.active.unview();
+			await game.scenes.active.view();
+		} catch (e) {}
 	}
 }
 
@@ -145,6 +147,15 @@ Hooks.once('init', () => {
 		config: true,
 		type: Number,
 		default: 90
+	});
+	// TODO hide this setting if wall height is not
+	game.settings.register('f2e-grid-enhancements', 'height-precentage', {
+		name: 'f2e-grid-enhancements.setting.height-precentage-name',
+		hint: 'f2e-grid-enhancements.setting.height-precentage-hint',
+		scope: 'world',
+		config: true,
+		type: Number,
+		default: 50
 	});
 });
 
@@ -241,8 +252,11 @@ const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 		renderer: AuraRenderer,
 		token: TokenAura
 	}
+	// Overwrite for hex and griddless auras highlighting
 	patch_function('CONFIG.F2e.Aura.renderer.highlight');
+	// Overwrite for hex and griddless auras drawing
 	patch_function('CONFIG.F2e.Aura.renderer.draw');
+	// Overwrite for hex and griddless auras contains token
 	patch_function('CONFIG.F2e.Aura.token.containsToken');
 	// Overwrite for hex and griddless enabling auras on those grids
 	patch_function('CONFIG.F2e.Scene.document.canHaveAuras');

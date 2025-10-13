@@ -4,7 +4,7 @@
 
 # PF2e & SF2e - Grid Enhancements
 
-This module aims to enhance the use of grids while using the PF2e and SF2e system. A full list of features can be found below. If you are looking for a particular feature or are having an issue please open up an `Issue`!
+This module aims to enhance the use of grids while using the PF2e and SF2e systems. A full list of features can be found below. If you are looking for a particular feature or are having an issue please open up an `Issue`!
 
 **WARNING** - This module uses a lot of function patching and so it is suggested to run it on the exact version of FoundryVTT and SF2e or PF2e that it is verified on.
 
@@ -44,10 +44,15 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
         - `line` additionally renders as a line
     - Emulate `gridTemplates` behavior
 - Token
-    - Custom `distanceTo` function for correct range calculation between tokens
+    - Custom `distanceTo` function for correct range calculation between tokens with support for Wall Height
 - Aura
     - Support aura via extending system implementaion
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but should otherwise work
+
+### Square Improvements
+
+- Token
+    - Custom `distanceTo` function for correct range calculation between tokens with support for Wall Height
 
 ### Gridless Improvements
 

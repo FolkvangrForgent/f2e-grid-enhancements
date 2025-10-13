@@ -17,7 +17,9 @@
 			"square-cone-template-angle-name": "Square Cone Template Angle",
 			"square-cone-template-angle-hint": "The default internal angle to use for the cone template on square grids.",
 			"gridless-cone-template-angle-name": "Gridless Cone Template Angle",
-			"gridless-cone-template-angle-hint": "The default internal angle to use for the cone template on gridless grids."
+			"gridless-cone-template-angle-hint": "The default internal angle to use for the cone template on gridless grids.",
+			"height-precentage-name": "Token Height Precentage",
+			"height-precentage-hint": "The precentage of a grid space that needs to be occupied to count for distance calculations."
 		}
 	}
 }
