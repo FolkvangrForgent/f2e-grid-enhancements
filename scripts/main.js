@@ -15,14 +15,6 @@ CONFIG.F2e = {
 		layer: CONFIG.Canvas.layers.templates.layerClass.prototype,
 		layerFoundry: Object.getPrototypeOf(CONFIG.Canvas.layers.templates.layerClass.prototype),
 		object: CONFIG.MeasuredTemplate.objectClass.prototype
-	},
-}
-
-function compatibility_warning() {
-	if (game?.user?.isGM) {
-		if (!((game.system.id === "pf2e" && game.system.version === "7.6.2" || game.system.id === "sf2e" && game.system.version === "7.6.2") && game.version === "13.350")) {
-			ui.notifications.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + game.i18n.localize('f2e-grid-enhancements.compatibility-warning') + ' ' + (game?.version ?? '?') + ' or ' + (game?.system?.title ?? '?') + ' ' + (game?.system?.version  ?? '?') + '', {console: false});
-		}
 	}
 }
 
@@ -113,11 +105,9 @@ Hooks.once('libWrapper.Ready', () => {
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
-		compatibility_warning();
 	} else {
 		Hooks.once('ready', async function () {
 			review();
-			compatibility_warning();
 		});
 	}
 });
@@ -148,7 +138,7 @@ Hooks.once('init', () => {
 		type: Number,
 		default: 90
 	});
-	// TODO hide this setting if wall height is not
+	// TODO hide this setting if wall height is not enabled
 	game.settings.register('f2e-grid-enhancements', 'height-precentage', {
 		name: 'f2e-grid-enhancements.setting.height-precentage-name',
 		hint: 'f2e-grid-enhancements.setting.height-precentage-hint',

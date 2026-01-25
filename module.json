@@ -20,7 +20,15 @@
 				"type": "system",
 				"compatibility": {
 					"minimum": "7.6.2",
-					"verified": "7.6.2"
+					"verified": "7.9.1"
+				}
+			},
+			{
+				"id": "sf2e",
+				"type": "system",
+				"compatibility": {
+					"minimum": "0.0.1",
+					"verified": "0.0.3"
 				}
 			}
 		],
@@ -30,7 +38,7 @@
 				"type": "module",
 				"compatibility": {
 					"minimum": "1.0.0.0",
-					"verified": "1.13.2.0"
+					"verified": "1.13.4.0"
 				}
 			}
 		]

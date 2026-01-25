@@ -1,7 +1,6 @@
 {
 	"f2e-grid-enhancements": {
 		"name": "PF2e & SF2e - Ulepszenia siatki",
-		"compatibility-warning": "Potencjalna niezgodność z",
 		"template": {
 			"hex": "Szablon heksa",
 			"square": "Szablon kwadratu",

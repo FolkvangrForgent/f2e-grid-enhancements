@@ -6,7 +6,7 @@
 
 This module aims to enhance the use of grids while using the PF2e and SF2e systems. A full list of features can be found below. If you are looking for a particular feature or are having an issue please open up an `Issue`!
 
-**WARNING** - This module uses a lot of function patching and so it is suggested to run it on the exact version of FoundryVTT and SF2e or PF2e that it is verified on.
+**WARNING** - This module uses a lot of function patching and so it may break if FoundryVTT or the SF2e or PF2e systems update. This module is currently strictly a FVTT V13 module. A FVTT V14 version of this module is in the works and assuming system adoption of new features will be much smaller in scope; Looking into creating general solutions for flanking on hex and gridless.
 
 ## Features
 
