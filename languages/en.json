@@ -1,7 +1,6 @@
 {
 	"f2e-grid-enhancements": {
 		"name": "PF2e & SF2e - Grid Enhancements",
-		"compatibility-warning": "Potential incompatability with",
 		"template": {
 			"hex": "Hex Template",
 			"square": "Square Template",
