@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/Foundry-v13-informational)
+![](https://img.shields.io/badge/Foundry-v14-informational)
 ![Latest Release Download Count](https://img.shields.io/github/downloads/FolkvangrForgent/f2e-grid-enhancements/latest/module.zip)
 ![Forge Installs](https://img.shields.io/badge/dynamic/json?label=Forge%20Installs&query=package.installs&suffix=%25&url=https%3A%2F%2Fforge-vtt.com%2Fapi%2Fbazaar%2Fpackage%2Ff2e-grid-enhancements&colorB=4aa94a)
 
@@ -6,53 +6,41 @@
 
 This module aims to enhance the use of grids while using the PF2e and SF2e systems. A full list of features can be found below. If you are looking for a particular feature or are having an issue please open up an `Issue`!
 
-**WARNING** - This module uses a lot of function patching and so it may break if FoundryVTT or the SF2e or PF2e systems update. This module is currently strictly a FVTT V13 module. A FVTT V14 version of this module is in the works and assuming system adoption of new features will be much smaller in scope; Looking into creating general solutions for flanking on hex and gridless.
+**WARNING** - This module uses a lot of function patching and so it may break if FoundryVTT or the SF2e or PF2e systems update. This module is currently strictly a FVTT V14 module.
 
 ## Features
 
 ### General Improvements
 
-- Custom Template Measurement Controls for shapes that exist in pf2e rules `square`/`hex`/`point`, `emanation`, `burst`, `cone`, and `line`
-- Custom Rendering of Measurment Templates and ruler text to make them cleaner
-    - `emanation`, `burst`, and `cone` display ruler text next to the origin of the template and doesn't display destination point
-    - `square`/`hex`/`point` does not display ruler text and doesn't display destination point
-    - `line` ruler text contains width if it is larger than a grid unit
+- Scene Region
+    - `point` region that is a single grid unit increment
+    - `cone` internal angle and template mode snapping angle can be configured
 - Settings
-    - (GM) `cone` internal angle can be configured for all grid types
-
-### Hex Improvements
-
-- Template
+    - (GM) `cone` internal angle can be configured for all default grid types
+    - (GM) `cone` snapping angle can be configured for all default grid types
+- Chat Template
     - Snapping
         - Origin
-            - `hex` snaps to centers
+            - `point` snaps to centers
             - `emanation` snaps to centers or vertices
             - `burst` snaps to vertices
             - `cone` snaps to centers or midpoints or vertices
-            - `line` doesn't snap
+            - `line` snaps to midpoints or vertices
         - Angle
-            - `cone` snaps to 30 degree increments when placing
-            - `Shift` + `MouseWheel` will rotate placed templates in 30 degree increments
-        - Distance
-            - `hex` only highlights a single hex
-            - `emanation`,`burst`,`cone`, and `line` snap to grid unit increments
-    - Highlighting
-        - Custom `line` algorithm
-            - More accurate than default behavior but not without issues subject to later improvement
-        - Improved preview rendering
-    - Rendering
-        - `line` additionally renders as a line
-    - Emulate `gridTemplates` behavior
+            - `cone` internal angle and snapping angle can be configured
+
+### Hex Improvements
+
 - Token
-    - Custom `distanceTo` function for correct range calculation between tokens with support for Wall Height
+    - Custom `distanceTo` function for correct range calculation between tokens with support for token depth
 - Aura
     - Support aura via extending system implementaion
-        - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but should otherwise work
+        - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
 
 ### Square Improvements
 
 - Token
-    - Custom `distanceTo` function for correct range calculation between tokens with support for Wall Height
+    - Custom `distanceTo` function for correct range calculation between tokens with support for token depth
 
 ### Gridless Improvements
 

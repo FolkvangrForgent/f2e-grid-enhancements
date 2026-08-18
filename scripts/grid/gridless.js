@@ -53,7 +53,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {}
 
 export function Aura_renderer_highlight(wrapped, self) {
 	const aura_radius = (self.radius / self.token.document.scene.grid.distance) * 2;
-	self.token.document.scene.grid.highlightPosition(self.highlightLayer.name, {
+	canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
 		shape: rotated_ellipse(self.token.document.width + aura_radius, self.token.document.height + aura_radius, self.token.document.rotation, self.token.document.scene.grid.size, self.token.document.center.x - (self.token.document.width + aura_radius) * self.token.document.scene.grid.size / 2, self.token.document.center.y - (self.token.document.height + aura_radius) * self.token.document.scene.grid.size / 2, 1),
 		border: self.appearance.border?.color,
 		color: self.appearance.highlight.color,

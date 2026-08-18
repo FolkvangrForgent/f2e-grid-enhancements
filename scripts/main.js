@@ -11,10 +11,10 @@ CONFIG.F2e = {
 	Scene: {
 		document: CONFIG.Scene.documentClass.prototype
 	},
-	MeasuredTemplate: {
-		layer: CONFIG.Canvas.layers.templates.layerClass.prototype,
-		layerFoundry: Object.getPrototypeOf(CONFIG.Canvas.layers.templates.layerClass.prototype),
-		object: CONFIG.MeasuredTemplate.objectClass.prototype
+	Region: {
+		layer: CONFIG.Canvas.layers.regions.layerClass.prototype,
+		object: CONFIG.Region.objectClass.prototype,
+		layerFoundry: Object.getPrototypeOf(CONFIG.Canvas.layers.regions.layerClass).prototype,
 	}
 }
 
@@ -26,37 +26,37 @@ function patch_function(target_function_name) {
 			return wrapped(...args);
 		}
 		if (canvas.grid.isHexagonal) {
-			if (hex[base]) {
+			if (hex[base] !== undefined) {
 				return hex[base](wrapped, this, ...args);
 			} else {
-				if (all[base]) {
+				if (all[base] !== undefined) {
 					return all[base](wrapped, this, ...args);
 				} else {
 					return wrapped(...args);
 				}
 			}
 		} else if (canvas.grid.isGridless) {
-			if (gridless[base]) {
+			if (gridless[base] !== undefined) {
 				return gridless[base](wrapped, this, ...args);
 			} else {
-				if (all[base]) {
+				if (all[base] !== undefined) {
 					return all[base](wrapped, this, ...args);
 				} else {
 					return wrapped(...args);
 				}
 			}
 		} else if (canvas.grid.isSquare) {
-			if (square[base]) {
+			if (square[base] !== undefined) {
 				return square[base](wrapped, this, ...args);
 			} else {
-				if (all[base]) {
+				if (all[base] !== undefined) {
 					return all[base](wrapped, this, ...args);
 				} else {
 					return wrapped(...args);
 				}
 			}
 		} else {
-			if (all[base]) {
+			if (all[base] !== undefined) {
 				return all[base](wrapped, this, ...args);
 			} else {
 				return wrapped(...args);
@@ -76,32 +76,18 @@ async function review() {
 }
 
 Hooks.once('libWrapper.Ready', () => {
-	// Return more accurate distance measurement
+	// [ hex & square & gridless ] Custom distance to measurement for 3D support
 	patch_function('CONFIG.F2e.Token.object.distanceTo');
-	// Custom gridless elipse shape (generation)
+	// [ gridless ] Custom elipse token shape generation
 	patch_function('CONFIG.F2e.Token.object.getShape');
-	// Custom gridless elipse shape (rotation)
+	// [ gridless ] Custom elipse token shape rotation
 	patch_function('CONFIG.F2e.Token.document._onUpdate');
-	// Simulate hex gridTemplates as to not interfere with base system setting & custom line hex template shape
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._computeShape');
-	// Simulate hex gridTemplates as to not interfere with base system setting
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshShape');
-	// Custom cone angle (use Foundry  to hijack template preview logic)
-	patch_function('CONFIG.F2e.MeasuredTemplate.layerFoundry._onDragLeftStart');
-	// Simulate hex gridTemplates as to not interfere with base system setting & Rotation of new hex templetes & Point max distance
-	patch_function('CONFIG.F2e.MeasuredTemplate.layer._onDragLeftMove');
-	// Rotation of placed hex templetes
-	patch_function('CONFIG.F2e.MeasuredTemplate.layer._onMouseWheel');
-	// Snap point of hex & square templates (remove snap)
-	patch_function('CONFIG.F2e.MeasuredTemplate.layer.getSnappedPoint');
-	// Snap point of hex & square templates (add snap)
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshPosition');
-	// Custom rendering for templates
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshTemplate');
-	// Custom hex line rendering for templates
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._getGridHighlightPositions');
-	// Custom ruler text
-	patch_function('CONFIG.F2e.MeasuredTemplate.object._refreshRulerText');
+	// [ hex & square & gridless ] Custom chat template placement
+	patch_function('CONFIG.F2e.Region.layerFoundry.placeRegion');
+	// [ hex & square & gridless ] Custom chat template snap point
+	patch_function('CONFIG.F2e.Region.object.snappingMode');
+	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
+	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
@@ -138,102 +124,68 @@ Hooks.once('init', () => {
 		type: Number,
 		default: 90
 	});
-	// TODO hide this setting if wall height is not enabled
-	game.settings.register('f2e-grid-enhancements', 'height-precentage', {
-		name: 'f2e-grid-enhancements.setting.height-precentage-name',
-		hint: 'f2e-grid-enhancements.setting.height-precentage-hint',
+	game.settings.register('f2e-grid-enhancements', 'hex-cone-snapping-angle', {
+		name: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle-name',
+		hint: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle-hint',
 		scope: 'world',
 		config: true,
 		type: Number,
-		default: 50
+		default: 30
+	});
+	game.settings.register('f2e-grid-enhancements', 'square-cone-snapping-angle', {
+		name: 'f2e-grid-enhancements.setting.square-cone-snapping-angle-name',
+		hint: 'f2e-grid-enhancements.setting.square-cone-snapping-angle-hint',
+		scope: 'world',
+		config: true,
+		type: Number,
+		default: 45
+	});
+	game.settings.register('f2e-grid-enhancements', 'gridless-cone-snapping-angle', {
+		name: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle-name',
+		hint: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle-hint',
+		scope: 'world',
+		config: true,
+		type: Number,
+		default: 15
 	});
 });
 
 // Custom template controls (requires CONFIG.F2e.MeasuredTemplate.layer._onDragLeftStart patch to function properly)
 Hooks.on("getSceneControlButtons", (controls) => {
-	// ensure canvas is ready and controls contain template
-	if (!canvas?.ready || !controls?.templates) {
+	// ensure canvas is ready and controls contain regions
+	if (!canvas?.ready || !controls?.regions?.tools?.cone?.shapeData) {
 		return;
 	}
-	// setup edited controls (just replacing tools and setting active didn't work nor did naming this templates...)
-	delete controls.templates;
-	controls.template = {
-		name: "template",
-		order: 2,
-		title: "CONTROLS.GroupMeasure",
-		icon: "fa-solid fa-ruler-combined",
-		visible: game.user.can("TEMPLATE_CREATE"),
-		onChange: (event, active) => {
-			if ( active ) canvas.templates.activate();
-		},
-		onToolChange: () => canvas.templates.setAllRenderFlags({refreshState: true}),
-		tools: {
-			point: {
-				name: "point",
-				order: 1,
-				title: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
-				icon: canvas.grid.isHexagonal ? "fa-solid fa-hexagon" : canvas.grid.isSquare ? "fa-solid fa-square" : "fa-solid fa-circle",
-				// toolclip: {
-				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-				// 	heading: canvas.grid.isHexagonal ? "f2e-grid-enhancements.template.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.template.square" : "f2e-grid-enhancements.template.point",
-				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
-				// }
-			},
-			emanation: {
-				name: "emanation",
-				order: 2,
-				title: "f2e-grid-enhancements.template.emanation",
-				icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon-xmark" : "fa-regular fa-circle-x",
-				// toolclip: {
-				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-				// 	heading: "f2e-grid-enhancements.template.emanation",
-				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
-				// }
-			},
-			"burst": {
-				name: "burst",
-				order: 3,
-				title: "f2e-grid-enhancements.template.burst",
-				icon: canvas.grid.isHexagonal ? "fa-regular fa-hexagon" : "fa-regular fa-circle",
-				// toolclip: {
-				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-				// 	heading: "f2e-grid-enhancements.template.burst",
-				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete"])
-				// }
-			},
-			cone: {
-				name: "cone",
-				order: 4,
-				title: "f2e-grid-enhancements.template.cone",
-				icon: "fa-regular fa-rotate-270 fa-triangle",
-				// toolclip: {
-				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-				// 	heading: "f2e-grid-enhancements.template.cone",
-				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-				// }
-			},
-			line: {
-				name: "line",
-				order: 5,
-				title: "f2e-grid-enhancements.template.line",
-				icon: "fa-regular fa-rotate-90 fa-pipe",
-				// toolclip: {
-				// 	src: "/modules/f2e-grid-enhancements/src/media/rect.webm",
-				// 	heading: "f2e-grid-enhancements.template.line",
-				// 	items: SceneControls.buildToolclipItems(["create", "move", "edit", "hide", "delete", "rotate"])
-				// }
-			},
-			clear: {
-				name: "clear",
-				order: 6,
-				title: "CONTROLS.MeasureClear",
-				icon: "fa-solid fa-trash",
-				visible: game.user.isGM,
-				onChange: () => canvas.templates.deleteAll(),
-				button: true
-			}
-		},
-		activeTool: "point"
+	// get and set cone angle from settings
+	try {
+		if (canvas?.grid?.isGridless) {
+			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'gridless-cone-template-angle');
+		} else if (canvas?.grid?.isHexagonal) {
+			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'hex-cone-template-angle');
+		} else if (canvas?.grid?.isSquare) {
+			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'square-cone-template-angle');
+		} else {
+			controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
+		}
+	} catch {
+		controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
+	}
+	controls.regions.tools.point = {
+		name: "point",
+		order: 8,
+		creation: true,
+		control: !canvas.regions?.templateMode,
+		shapeData: {type: "circle", x: 0, y: 0, radius: 0},
+		title: canvas.grid.isHexagonal ? "f2e-grid-enhancements.region.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.region.square" : "f2e-grid-enhancements.region.point",
+		icon: canvas.grid.isHexagonal ? "fa-solid fa-hexagon" : canvas.grid.isSquare ? "fa-solid fa-square" : "fa-solid fa-circle",
+		toolclip: {
+			heading: canvas.grid.isHexagonal ? "f2e-grid-enhancements.region.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.region.square" : "f2e-grid-enhancements.region.point",
+			items: foundry.applications.ui.SceneControls.buildToolclipItems([
+				!canvas.regions?.templateMode ? {paragraph: "CONTROLS.RegionShape"} : "",
+				"draw",
+				!canvas.regions?.templateMode ? {paragraph: "CONTROLS.RegionPerformance"} : ""
+			])
+		}
 	}
 });
 
