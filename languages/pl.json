@@ -1,24 +1,13 @@
 {
 	"f2e-grid-enhancements": {
 		"name": "PF2e & SF2e - Ulepszenia siatki",
-		"template": {
-			"hex": "Szablon heksa",
-			"square": "Szablon kwadratu",
-			"point": "Szablon punktu",
-			"emanation": "Szablon emanacji",
-			"burst": "Szablon wybuchu",
-			"cone": "Szablon stożka",
-			"line": "Szablon linii"
-		},
 		"setting": {
 			"hex-cone-template-angle-name": "Kąt szablonu stożka siatki sześciokątnej",
 			"hex-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na siatkach sześciokątnych.",
 			"square-cone-template-angle-name": "Kąt szablonu stożka siatki kwadratowej",
 			"square-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na siatkach kwadratowych.",
 			"gridless-cone-template-angle-name": "Kąt szablonu stożka bez siatki",
-			"gridless-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na scenach bez siatki.",
-			"height-precentage-name": "Procent wysokości tokenu",
-			"height-precentage-hint": "Procent powierzchni siatki, który musi być zajęty, aby uwzględnić go w obliczeniach odległości."
+			"gridless-cone-template-angle-hint": "Domyślny kąt wewnętrzny używany dla szablonu stożka na scenach bez siatki."
 		}
 	}
 }

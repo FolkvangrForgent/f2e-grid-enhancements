@@ -1,14 +1,10 @@
 {
 	"f2e-grid-enhancements": {
 		"name": "PF2e & SF2e - Grid Enhancements",
-		"template": {
-			"hex": "Hex Template",
-			"square": "Square Template",
-			"point": "Point Template",
-			"emanation": "Emanation Template",
-			"burst": "Burst Template",
-			"cone": "Cone Template",
-			"line": "Line Template"
+		"region": {
+			"hex": "Draw Hex",
+			"square": "Draw Square",
+			"point": "Draw Point"
 		},
 		"setting": {
 			"hex-cone-template-angle-name": "Hex Cone Template Angle",
@@ -17,8 +13,12 @@
 			"square-cone-template-angle-hint": "The default internal angle to use for the cone template on square grids.",
 			"gridless-cone-template-angle-name": "Gridless Cone Template Angle",
 			"gridless-cone-template-angle-hint": "The default internal angle to use for the cone template on gridless grids.",
-			"height-precentage-name": "Token Height Precentage",
-			"height-precentage-hint": "The precentage of a grid space that needs to be occupied to count for distance calculations."
+			"hex-cone-snapping-angle-name": "Hex Cone Snapping Angle",
+			"hex-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on hex grids.",
+			"square-cone-snapping-angle-name": "Square Cone Snapping Angle",
+			"square-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on square grids.",
+			"gridless-cone-snapping-angle-name": "Gridless Cone Snapping Angle",
+			"gridless-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on gridless grids."
 		}
 	}
 }
