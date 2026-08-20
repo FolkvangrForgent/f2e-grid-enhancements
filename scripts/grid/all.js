@@ -9,8 +9,9 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 			const width = Math.round(self.document.width) / 2;
 			const height = Math.round(self.document.height) / 2;
 			const depth = Math.round(self.document.depth) / 2;
-			for (let polar = 0; polar <= 1; polar += 0.25) {
-				for (let azimuth = 0; azimuth <= 2; azimuth += 0.25) {
+			const resolution = Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 4) + 2))
+			for (let polar = 0; polar <= 1; polar += 1 / resolution) {
+				for (let azimuth = 0; azimuth <= 2; azimuth += 1 / resolution) {
 					selfPoints.push({
 						x: self.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * self.document.scene.grid.size,
 						y: self.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * self.document.scene.grid.size,
@@ -54,12 +55,12 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	if (target instanceof CONFIG.Token.objectClass) {
 		if (canvas.grid.isGridless) {
 			if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(target.document.shape)) {
-				// TODO dynamic resolution
 				const width = Math.round(target.document.width) / 2;
 				const height = Math.round(target.document.height) / 2;
-				const depth = Math.round(target.document.depth) / 2;
-				for (let polar = 0; polar <= 1; polar += 0.25) {
-					for (let azimuth = 0; azimuth <= 2; azimuth += 0.25) {
+				const depth = Math.round(target.document.depth);
+				const resolution = Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 4) + 2))
+				for (let polar = 0; polar <= 1; polar += 1 / resolution) {
+					for (let azimuth = 0; azimuth <= 2; azimuth += 1 / resolution) {
 						targetPoints.push({
 							x: target.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * target.document.scene.grid.size,
 							y: target.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * target.document.scene.grid.size,
@@ -273,7 +274,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		self.border_height = self.token.document.height
 		self.border.clear();
 	}
-	// Create aura border (token base type didn't work for some reason)
+	// Create aura border (token base type and polygon type didn't work for some reason)
 	if (self.border.geometry.graphicsData.length == 0) {
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
 			const aura_shape = new foundry.data.EmanationShapeData({
