@@ -18,6 +18,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Settings
     - (GM) `cone` internal angle can be configured for all default grid types
     - (GM) `cone` snapping angle can be configured for all default grid types
+    - (GM) Default new grid type
 - Chat Template
     - Snapping
         - Origin
@@ -28,26 +29,28 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
             - `line` snaps to midpoints or vertices
         - Angle
             - `cone` internal angle and snapping angle can be configured
+- Token
+    - Custom `distanceTo` function for correct range calculation between tokens with token depth support
 
 ### Hex Improvements
 
-- Token
-    - Custom `distanceTo` function for correct range calculation between tokens with support for token depth
 - Aura
     - Support aura via extending system implementaion
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
 
 ### Square Improvements
 
-- Token
-    - Custom `distanceTo` function for correct range calculation between tokens with support for token depth
+- Aura
+    - Utilize `distanceTo` function for determining which tokens are in the aura
+    - More accurate border shape
 
 ### Gridless Improvements
 
 - Token
-    - Custom ellipse shape for token that rotates with the token
+    - Fix for `ellipse` token shapes and hover ruler
 - Aura
     - Support aura via extending system implementaion
+    - More accurate border shape
 
 ### Languages
 

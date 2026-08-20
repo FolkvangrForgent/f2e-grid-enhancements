@@ -6,10 +6,9 @@ import * as gridless from './grid/gridless.js';
 CONFIG.F2e = {
 	Token: {
 		object: CONFIG.Token.objectClass.prototype,
-		document: CONFIG.Token.documentClass.prototype
 	},
 	Scene: {
-		document: CONFIG.Scene.documentClass.prototype
+		document: CONFIG.Scene.documentClass.prototype,
 	},
 	Region: {
 		layer: CONFIG.Canvas.layers.regions.layerClass.prototype,
@@ -78,16 +77,16 @@ async function review() {
 Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom distance to measurement for 3D support
 	patch_function('CONFIG.F2e.Token.object.distanceTo');
-	// [ gridless ] Custom elipse token shape generation
-	patch_function('CONFIG.F2e.Token.object.getShape');
-	// [ gridless ] Custom elipse token shape rotation
-	patch_function('CONFIG.F2e.Token.document._onUpdate');
 	// [ hex & square & gridless ] Custom chat template placement
 	patch_function('CONFIG.F2e.Region.layerFoundry.placeRegion');
 	// [ hex & square & gridless ] Custom chat template snap point
 	patch_function('CONFIG.F2e.Region.object.snappingMode');
 	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
 	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
+	// [ hex & square & gridless ] Automatic emanation placement
+	patch_function('CONFIG.F2e.Region.layer._createDragShapeData');
+	// [ gridless ] Fix hover ruler
+	patch_function('CONFIG.F2e.Token.object.localShape');
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
@@ -100,6 +99,7 @@ Hooks.once('libWrapper.Ready', () => {
 
 // Module settings
 Hooks.once('init', () => {
+	// setup settings
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-template-angle', {
 		name: 'f2e-grid-enhancements.setting.hex-cone-template-angle-name',
 		hint: 'f2e-grid-enhancements.setting.hex-cone-template-angle-hint',
@@ -148,7 +148,28 @@ Hooks.once('init', () => {
 		type: Number,
 		default: 15
 	});
+	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
+		name: 'f2e-grid-enhancements.setting.default-grid-type-name',
+		hint: 'f2e-grid-enhancements.setting.default-grid-type-hint',
+		scope: 'world',
+		config: true,
+		type: Number,
+		choices: {
+			0: 'SCENE.GridGridless',
+			1: 'SCENE.GridSquare',
+			2: 'SCENE.GridHexOddR',
+			3: 'SCENE.GridHexEvenR',
+			4: 'SCENE.GridHexOddQ',
+			5: 'SCENE.GridHexEvenQ'
+		},
+		default: 1,
+		requiresReload: true
+	});
+	// setup default grid
+	game.system.grid = {type: game.settings.get('f2e-grid-enhancements', 'default-grid-type'), distance: 5, units: 'ft', diagonals: 4}
 });
+
+
 
 // Custom template controls (requires CONFIG.F2e.MeasuredTemplate.layer._onDragLeftStart patch to function properly)
 Hooks.on("getSceneControlButtons", (controls) => {
@@ -194,13 +215,13 @@ const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 		renderer: AuraRenderer,
 		token: TokenAura
 	}
-	// Overwrite for hex and griddless auras highlighting
+	// [ hex & gridless ] Aura highlighting
 	patch_function('CONFIG.F2e.Aura.renderer.highlight');
-	// Overwrite for hex and griddless auras drawing
+	// [ hex & square & gridless ] Aura drawing
 	patch_function('CONFIG.F2e.Aura.renderer.draw');
-	// Overwrite for hex and griddless auras contains token
+	// [ hex & square & gridless ] Aura contain token
 	patch_function('CONFIG.F2e.Aura.token.containsToken');
-	// Overwrite for hex and griddless enabling auras on those grids
+	// [ hex & gridless ] Aura enable
 	patch_function('CONFIG.F2e.Scene.document.canHaveAuras');
 }, 100);
 
