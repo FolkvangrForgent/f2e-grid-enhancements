@@ -1,111 +1,51 @@
-// TODO gridless edge to edge or edge to side options
-// TODO Support 3D elipsoid
-export function Token_object_distanceTo(wrapped, self, target, opts) {
-	return wrapped(target, opts);
-}
-
-function rotated_ellipse(width, height, rotation, grid_size, x, y, ratio) {
-	const w = (width / 2) * grid_size;
-	const h = (height / 2) * grid_size;
-	const r = Math.toRadians(rotation);
-	const p = Math.floor((w + h) / 2);
-	const n = Math.max(Math.ceil(Math.PI / Math.acos(Math.max(p - 0.25, 0) / p) * ratio), 8);
-	const points = new Array(n * 2);
-	for (let i = 0; i < n; i++) {
-		const a = 2 * Math.PI * (i / n);
-		points[i * 2] = (w * Math.cos(a) * Math.cos(r) - h * Math.sin(a) * Math.sin(r)) + w + x;
-		points[i * 2 + 1] = (w * Math.cos(a) * Math.sin(r) + h * Math.sin(a) * Math.cos(r)) + h + y;
-	}
-	return new PIXI.Polygon(points);
-}
-
-export function Token_object_getShape(wrapped, self) {
-	return rotated_ellipse(self.document.width, self.document.height, self.document.rotation, self.scene.grid.size, 0, 0, 1);
-}
-
-export function Token_document__onUpdate(wrapped, self, changed, options, userId) {
-	wrapped(changed, options, userId);
-	// It feels wrong to have to set these but I'm at my wits end
-	let refresh = false;
-	if (changed?.width !== undefined) {
-		refresh = true;
-		self.width = changed.width
-	}
-	if (changed?.height !== undefined) {
-		refresh = true;
-		self.height = changed.height
-	}
-	if (changed?.rotation !== undefined) {
-		refresh = true;
-		self.rotation = changed.rotation
-	}
-	if (refresh) {
-		self.object._refreshShape();
-		self.object._refreshBorder();
-	}
-}
-
 export function Scene_document_canHaveAuras(wrapped, self) {
 	return true;
 }
 
-export function Aura_renderer_draw(wrapped, self, showBorder) {}
-
 export function Aura_renderer_highlight(wrapped, self) {
-	const aura_radius = (self.radius / self.token.document.scene.grid.distance) * 2;
-	canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
-		shape: rotated_ellipse(self.token.document.width + aura_radius, self.token.document.height + aura_radius, self.token.document.rotation, self.token.document.scene.grid.size, self.token.document.center.x - (self.token.document.width + aura_radius) * self.token.document.scene.grid.size / 2, self.token.document.center.y - (self.token.document.height + aura_radius) * self.token.document.scene.grid.size / 2, 1),
-		border: self.appearance.border?.color,
-		color: self.appearance.highlight.color,
-		alpha: self.appearance.highlight.alpha,
+	let aura_base;
+	if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
+		aura_base = {
+			type: "ellipse",
+			x: self.token.document.x + self.token.document.width * self.token.document.scene.grid.size / 2,
+			y: self.token.document.y + self.token.document.height * self.token.document.scene.grid.size / 2,
+			radiusX: self.token.document.width / 2 * self.token.document.scene.grid.size,
+			radiusY: self.token.document.height / 2 * self.token.document.scene.grid.size,
+		}
+	} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape)) {
+		aura_base = {
+			type: "rectangle",
+			x: self.token.document.x,
+			y: self.token.document.y,
+			width: self.token.document.width * self.token.document.scene.grid.size,
+			height: self.token.document.height * self.token.document.scene.grid.size,
+		}
+	} else {
+		return;
+	}
+	const aura_shape = new foundry.data.EmanationShapeData({
+		type: "emanation",
+		base: aura_base,
+		radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
+		gridBased: false
 	});
+	const layer = canvas.interface.grid.highlightLayers[self.highlightLayer.name];
+	if ( !layer ) {
+		return;
+	}
+	layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
+	layer.drawShape(aura_shape.polygons[0]).endFill();
 }
 
-// TODO Support 3D elipsoid
-export function Aura_token_containsToken(wrapped, self, token) {
-	// If either token is hidden or not rendered, return false early
-	if (self.token.hidden || token.hidden) {
-		return false;
-	}
-	// If the token is the one emitting the aura, return true early
-	if (token === self.token) {
-		return true;
-	}
-	// get aura shape (reduced quality)
-	const aura_radius = (self.radius / self.token.scene.grid.distance) * 2;
-	const aura_rotated_ellipse = rotated_ellipse(self.token.width + aura_radius, self.token.height + aura_radius, self.token.rotation, self.token.scene.grid.size, (token.center.x - self.token.center.x) - (self.token.width + aura_radius) * self.token.scene.grid.size / 2, (token.center.y - self.token.center.y) - (self.token.height + aura_radius) * self.token.scene.grid.size / 2, 0.5);
-	// setup polygons to test against
-	const polygonBackends = []
-	if (self.traits.includes("auditory")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.sound.create(self.token.center, {
-			type: "sound",
-			source: new foundry.canvas.sources.PointSoundSource({object: self.token.object}),
-			boundaryShape: [aura_rotated_ellipse.getBounds()]
-		}));
-	}
-	if (self.traits.includes("visual") || !self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.sight.create(self.token.center, {
-			type: "sight",
-			source: new foundry.canvas.sources.PointVisionSource({object: self.token.object}),
-			boundaryShape: [aura_rotated_ellipse.getBounds()]
-		}));
-	}
-	if (!self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		polygonBackends.push(CONFIG.Canvas.polygonBackends.move.create(self.token.center, {
-			type: "move",
-			source: new foundry.canvas.sources.PointMovementSource({object: self.token.object}),
-			boundaryShape: [aura_rotated_ellipse.getBounds()]
-		}));
-	}
-	// compare token shape points to relative aura shape and polygons
-	for (let i = 0; i < token.object.shape.points.length; i += 2) {
-		if (aura_rotated_ellipse.contains(token.object.shape.points[i], token.object.shape.points[i+1])) {
-			for (const polygonBackend of polygonBackends) {
-				if (polygonBackend.contains(token.object.shape.points[i] + token.center.x, token.object.shape.points[i+1] + token.center.y)) {
-					return true;
-				}
-			}
+export function Token_object_localShape(wrapped, self) {
+	switch (self.shape.type) {
+		case PIXI.SHAPES.ELIP: {
+			const shape = self.shape.clone();
+			const center = self.center;
+			shape.x = center.x;
+			shape.y = center.y;
+			return shape;
 		}
 	}
-	return false;
+	return wrapped();
 }

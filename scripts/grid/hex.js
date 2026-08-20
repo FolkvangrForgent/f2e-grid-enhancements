@@ -2,33 +2,8 @@ export function Scene_document_canHaveAuras(wrapped, self) {
 	return true;
 }
 
-export function Aura_renderer_draw(wrapped, self, showBorder) {}
-
-export function Aura_token_containsToken(wrapped, self, token) {
-	// If either token is hidden or not rendered, return false early
-	if (self.token.hidden || token.hidden) {
-		return false;
-	}
-	// If the token is the one emitting the aura, return true early
-	if (token === self.token) {
-		return true;
-	}
-	// decide what collision types to test against
-	const collision_types = []
-	if (self.traits.includes("auditory")) {
-		collision_types.push("sound");
-	}
-	if (self.traits.includes("visual") || !self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		collision_types.push("sight");
-	}
-	if (!self.traits.includes("auditory") && !self.traits.includes("visual")) {
-		collision_types.push("move");
-	}
-	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {reach: self.radius, collision_types: collision_types}) == 0) {
-		return true;
-	}
-	return false;
+export function Aura_renderer_draw(wrapped, self, showBorder) {
+	self.border.visible = false;
 }
 
 export function Aura_renderer_highlight(wrapped, self) {
