@@ -18,7 +18,17 @@
 			"square-cone-snapping-angle-name": "Square Cone Snapping Angle",
 			"square-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on square grids.",
 			"gridless-cone-snapping-angle-name": "Gridless Cone Snapping Angle",
-			"gridless-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on gridless grids."
+			"gridless-cone-snapping-angle-hint": "The default snapping angle to use for the cone template on gridless grids.",
+			"flanking-angle-name": "Custom Flanking Angle",
+			"flanking-angle-hint": "Angle to use to consider an opposing token to be flanking.",
+			"flanking-gridless-override-name": "Gridless Custom Flanking Logic",
+			"flanking-gridless-override-hint": "Use the custom flanking logic on gridless maps. This logic checks the surface intersections points on an ellipsoid representation of the target.",
+			"flanking-hex-override-name": "Hex Custom Flanking Logic",
+			"flanking-hex-override-hint": "Use the custom flanking logic on hex maps. This logic checks the surface intersections points on an ellipsoid representation of the target.",
+			"flanking-square-override-name": "Square Custom Flanking Logic",
+			"flanking-square-override-hint": "Use the custom flanking logic on square maps. This logic checks the surface intersections points on an ellipsoid representation of the target.",
+			"default-grid-type-name": "Default Grid Type",
+			"default-grid-type-hint": "The default grid type to use when making a new scene."
 		}
 	}
 }

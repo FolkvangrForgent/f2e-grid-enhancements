@@ -19,6 +19,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - (GM) `cone` internal angle can be configured for all default grid types
     - (GM) `cone` snapping angle can be configured for all default grid types
     - (GM) Default new grid type
+    - [experimental] (GM) Flanking logic overrides and related setting
 - Chat Template
     - Snapping
         - Origin
@@ -31,12 +32,15 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
             - `cone` internal angle and snapping angle can be configured
 - Token
     - Custom `distanceTo` function for correct range calculation between tokens with token depth support
+    - [experimental] Custom `onOppositeSides` function logic that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 
 ### Hex Improvements
 
 - Aura
     - Support aura via extending system implementaion
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
+- Token
+    - Reach enforcement support
 
 ### Square Improvements
 
@@ -48,6 +52,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 - Token
     - Fix for `ellipse` token shapes and hover ruler
+    - Reach enforcement support
 - Aura
     - Support aura via extending system implementaion
     - More accurate border shape
@@ -62,7 +67,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 ### Flanking
 
-I have no current intention to implement a custom flanking detector for hex or gridless as I don't have a generalized solution in mind yet, although I may work on a more hardcoded solution. It is possible to still use the system flanking detector on non square grids to mixed results. I personally have turned off said automation and instead give PCs a custom feat that adds a `Target is Off Guard` toggle the player can check and given NPCs a custom effect that does the same.
+There is now an experimental flanking logic override. I still don't know if this will produce acceptable results. It is still possible to use a more manual solution by turning off the `Flanking Detection` automation and instead give PCs a custom feat that adds a `Target is Off Guard` toggle the player can check and given NPCs a custom effect that does the same.
 
 #### Feat
 

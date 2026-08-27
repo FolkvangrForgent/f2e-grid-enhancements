@@ -87,6 +87,8 @@ Hooks.once('libWrapper.Ready', () => {
 	patch_function('CONFIG.F2e.Region.layer._createDragShapeData');
 	// [ gridless ] Fix hover ruler
 	patch_function('CONFIG.F2e.Token.object.localShape');
+	// [ hex & square & gridless ] Custom flanking
+	patch_function('CONFIG.F2e.Token.object.onOppositeSides');
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
@@ -105,7 +107,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.hex-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 60
 	});
 	game.settings.register('f2e-grid-enhancements', 'square-cone-template-angle', {
@@ -113,7 +115,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.square-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'gridless-cone-template-angle', {
@@ -121,7 +123,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.gridless-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-snapping-angle', {
@@ -129,7 +131,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 30
 	});
 	game.settings.register('f2e-grid-enhancements', 'square-cone-snapping-angle', {
@@ -137,7 +139,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.square-cone-snapping-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 45
 	});
 	game.settings.register('f2e-grid-enhancements', 'gridless-cone-snapping-angle', {
@@ -145,8 +147,40 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle-hint',
 		scope: 'world',
 		config: true,
-		type: Number,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 15
+	});
+	game.settings.register('f2e-grid-enhancements', 'flanking-angle', {
+		name: 'f2e-grid-enhancements.setting.flanking-angle-name',
+		hint: 'f2e-grid-enhancements.setting.flanking-angle-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
+		default: 135
+	});
+	game.settings.register('f2e-grid-enhancements', 'flanking-gridless-override', {
+		name: 'f2e-grid-enhancements.setting.flanking-gridless-override-name',
+		hint: 'f2e-grid-enhancements.setting.flanking-gridless-override-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false
+	});
+	game.settings.register('f2e-grid-enhancements', 'flanking-hex-override', {
+		name: 'f2e-grid-enhancements.setting.flanking-hex-override-name',
+		hint: 'f2e-grid-enhancements.setting.flanking-hex-override-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false
+	});
+	game.settings.register('f2e-grid-enhancements', 'flanking-square-override', {
+		name: 'f2e-grid-enhancements.setting.flanking-square-override-name',
+		hint: 'f2e-grid-enhancements.setting.flanking-square-override-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false
 	});
 	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
 		name: 'f2e-grid-enhancements.setting.default-grid-type-name',

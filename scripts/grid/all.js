@@ -157,6 +157,27 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	return Math.max(0, Math.round(distance * 10) / 10);
 }
 
+export function Token_object__onClickLeft2(wrapped, self, event) {
+	const requiresReach = game.pf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType("loot") ? (self.actor.isLoot ? "loot" : "merchants") : "corpses");
+	if (!self.document.isSecret && requiresReach &&  !self.document.isOwner && self.actor?.isLootableBy(game.user)) {
+		const inReach = [...new Set([self.layer.controlled, game.user.character?.getActiveTokens(true, false) ?? []].flat())].some(
+			(token) =>
+				token.actor?.isOwner &&
+				token.actor.isOfType("creature", "party") &&
+				token.distanceTo(self) <= token.actor.system.attributes.reach.manipulate,
+		);
+		if (!inReach) {
+			const thisIsCreature = self.actor.isOfType("creature");
+			const name = self.document.playersCanSeeName
+				? self.document.name
+				: _loc(`PF2E.Token.Mystified.The${thisIsCreature ? "Creature" : "Object"}`);
+			ui.notifications.warn("PF2E.Token.OutOfReach", { format: { token: name } });
+			return;
+		}
+	}
+	return wrapped(event);
+}
+
 export function Region_object_snappingMode(wrapped, self){
 	switch (self.areaShape) {
 		case 'point':
@@ -246,17 +267,16 @@ export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 
 export function Region_layer__createDragShapeData(wrapped, self, event) {
 	const shape = wrapped(event);
-	if (shape?.type == 'emanation' && shape?.base?.type === 'token') {
-		const gridSize = canvas.grid.size;
-		const inBoundTokens = canvas.scene.tokens.filter(token => {
-			return event.interactionData.origin.x.between(token.x, token.x + token.width * gridSize) && event.interactionData.origin.y.between(token.y, token.y + token.height * gridSize);
-		});
-		if (inBoundTokens.length === 1) {
-			shape.base.shape = inBoundTokens[0].shape;
-			shape.base.width = inBoundTokens[0].width;
-			shape.base.height = inBoundTokens[0].height;
-			event.interactionData.origin = inBoundTokens[0].getCenterPoint();
-		}
+	if (!self.templateMode || shape.type !== "emanation" || shape.base.type !== "token") return shape;
+	const {x, y} = event.interactionData.origin;
+	const tokens = canvas.tokens.quadtree.getObjects(new PIXI.Rectangle(x, y, 0, 0));
+	const token = tokens.values().next().value?.document;
+	if (tokens.size === 1 && token) {
+		const base = shape.base;
+		base.shape = token.shape;
+		base.width = token.width;
+		base.height = token.height;
+		event.interactionData.origin = token.getCenterPoint();
 	}
 	return shape;
 }
@@ -344,6 +364,72 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	// use custom distance to when checking if token is within aura
 	if (self.token.object.distanceTo(token.object, {reach: self.radius, collision_types: collision_types}) == 0) {
 		return true;
+	}
+	return false;
+}
+
+export function Token_object_onOppositeSides(wrapped, self, flanker, other, flankee) {
+	if (canvas.grid.isGridless && !game.settings.get('f2e-grid-enhancements', 'flanking-hex-override') || canvas.grid.isHexagonal && !game.settings.get('f2e-grid-enhancements', 'flanking-gridless-override') || canvas.grid.isSquare && !game.settings.get('f2e-grid-enhancements', 'flanking-square-override')) {
+		wrapped(flanker, other, flankee)
+	}
+	// flanker data
+	const flanker_x = flanker.document.center.x / flanker.document.scene.grid.size
+	const flanker_y = flanker.document.center.y / flanker.document.scene.grid.size
+	const flanker_z = flanker.document.elevation + flanker.document.depth / 2
+	// other data
+	const other_x = other.document.center.x / other.document.scene.grid.size
+	const other_y = other.document.center.y / other.document.scene.grid.size
+	const other_z = other.document.elevation + other.document.depth / 2
+	// flankee
+	const flankee_height = flankee.document.height / 2
+	const flankee_width = flankee.document.width / 2
+	const flankee_depth = flankee.document.depth / 2
+	const flankee_x = flankee.document.center.x / flankee.document.scene.grid.size
+	const flankee_y = flankee.document.center.y / flankee.document.scene.grid.size
+	const flankee_z = flankee.document.elevation + flankee_depth
+	// derived numbers
+	const x0 = flanker_x - flankee_x
+	const x1 = other_x - flanker_x
+	const y0 = flanker_y - flankee_y
+	const y1 = other_y - flanker_y
+	const z0 = flanker_z - flankee_z
+	const z1 = other_z - flanker_z
+	const a2 = flankee_width * flankee_width
+	const b2 = flankee_height * flankee_height
+	const c2 = flankee_depth * flankee_depth
+	// quadratic numbers
+	const A = (x1 * x1) / a2 + (y1 * y1) / b2 + (z1 * z1) / c2
+	const B = (2 * x0 * x1) / a2 + (2 * y0 * y1) / b2 + (2 * z0 * z1) / c2
+	const C = (x0 * x0) / a2 + (y0 * y0) / b2 + (z0 * z0) / c2 - 1
+	// quadratic solutions
+	const t0 = (-B + Math.sqrt(B * B - 4 * A * C)) / (2 * A)
+	const t1 = (-B - Math.sqrt(B * B - 4 * A * C)) / (2 * A)
+	// points
+	const points = [];
+	if (t0 !== NaN) {
+		points.push({x: flanker_x + t0 * x1, y: flanker_y + t0 * y1, z: flanker_z + t0 * z1})
+	}
+	if (t1 !== NaN && t0 !== t1) {
+		points.push({x: flanker_x + t1 * x1, y: flanker_y + t1 * y1, z: flanker_z + t1 * z1})
+	}
+	for (const point of points) {
+		let vector_0_x = point.x - flankee_x;
+		let vector_0_y = point.y - flankee_y;
+		let vector_0_z = point.z - flankee_z;
+		const vector_0_magnitude = Math.sqrt(vector_0_x * vector_0_x + vector_0_y * vector_0_y + vector_0_z * vector_0_z);
+		vector_0_x = vector_0_x / vector_0_magnitude;
+		vector_0_y = vector_0_y / vector_0_magnitude;
+		vector_0_z = vector_0_z / vector_0_magnitude;
+		let vector_1_x = flanker_x - flankee_x;
+		let vector_1_y = flanker_y - flankee_y;
+		let vector_1_z = flanker_z - flankee_z;
+		const vector_1_magnitude = Math.sqrt(vector_1_x * vector_1_x + vector_1_y * vector_1_y + vector_1_z * vector_1_z);
+		vector_1_x = vector_1_x / vector_1_magnitude;
+		vector_1_y = vector_1_y / vector_1_magnitude;
+		vector_1_z = vector_1_z / vector_1_magnitude;
+		if (Math.acos(vector_0_x * vector_1_x + vector_0_y * vector_1_y + vector_0_z * vector_1_z) >= Math.PI - game.settings.get('f2e-grid-enhancements', 'flanking-angle') / 360 * Math.PI) {
+			return true;
+		}
 	}
 	return false;
 }
