@@ -265,22 +265,6 @@ export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 	}
 }
 
-export function Region_layer__createDragShapeData(wrapped, self, event) {
-	const shape = wrapped(event);
-	if (!self.templateMode || shape.type !== "emanation" || shape.base.type !== "token") return shape;
-	const {x, y} = event.interactionData.origin;
-	const tokens = canvas.tokens.quadtree.getObjects(new PIXI.Rectangle(x, y, 0, 0));
-	const token = tokens.values().next().value?.document;
-	if (tokens.size === 1 && token) {
-		const base = shape.base;
-		base.shape = token.shape;
-		base.width = token.width;
-		base.height = token.height;
-		event.interactionData.origin = token.getCenterPoint();
-	}
-	return shape;
-}
-
 export function Aura_renderer_draw(wrapped, self, showBorder) {
 	// If the token is GM hidden, don't render anything
 	if (self.token.document.hidden && !self.token.visible) {

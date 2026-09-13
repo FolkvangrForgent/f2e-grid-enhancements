@@ -83,10 +83,6 @@ Hooks.once('libWrapper.Ready', () => {
 	patch_function('CONFIG.F2e.Region.object.snappingMode');
 	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
 	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
-	// [ hex & square & gridless ] Automatic emanation placement
-	patch_function('CONFIG.F2e.Region.layer._createDragShapeData');
-	// [ gridless ] Fix hover ruler
-	patch_function('CONFIG.F2e.Token.object.localShape');
 	// [ hex & square & gridless ] Custom flanking
 	patch_function('CONFIG.F2e.Token.object.onOppositeSides');
 	// Fix for shapes and timing issue when wrapping functions

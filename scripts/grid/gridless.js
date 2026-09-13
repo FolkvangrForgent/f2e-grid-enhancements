@@ -36,16 +36,3 @@ export function Aura_renderer_highlight(wrapped, self) {
 	layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
 	layer.drawShape(aura_shape.polygons[0]).endFill();
 }
-
-export function Token_object_localShape(wrapped, self) {
-	switch (self.shape.type) {
-		case PIXI.SHAPES.ELIP: {
-			const shape = self.shape.clone();
-			const center = self.center;
-			shape.x = center.x;
-			shape.y = center.y;
-			return shape;
-		}
-	}
-	return wrapped();
-}

@@ -51,7 +51,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 ### Gridless Improvements
 
 - Token
-    - Fix for `ellipse` token shapes and hover ruler
     - Reach enforcement support
 - Aura
     - Support aura via extending system implementaion
@@ -64,6 +63,10 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Polish
 
 ## Not implemented
+
+### Difficult Terrain
+
+I have taken a quick look at difficult terrain but at the point where it can produces unsatisfacotry results even on square grids and it was not a simple fix to extend to other grid types I have not worked on it. I am open to suggestions on how to make it work or any MR/PR that is submitted.
 
 ### Flanking
 

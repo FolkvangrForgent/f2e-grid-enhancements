@@ -19,16 +19,16 @@
 				"id": "pf2e",
 				"type": "system",
 				"compatibility": {
-					"minimum": "8.4.1",
-					"verified": "8.4.1"
+					"minimum": "8.5.0",
+					"verified": "8.5.0"
 				}
 			},
 			{
 				"id": "sf2e",
 				"type": "system",
 				"compatibility": {
-					"minimum": "1.4.1",
-					"verified": "1.4.1"
+					"minimum": "1.5.0",
+					"verified": "1.5.0"
 				}
 			}
 		],
