@@ -353,8 +353,8 @@ export function Aura_token_containsToken(wrapped, self, token) {
 }
 
 export function Token_object_onOppositeSides(wrapped, self, flanker, other, flankee) {
-	if (canvas.grid.isGridless && !game.settings.get('f2e-grid-enhancements', 'flanking-hex-override') || canvas.grid.isHexagonal && !game.settings.get('f2e-grid-enhancements', 'flanking-gridless-override') || canvas.grid.isSquare && !game.settings.get('f2e-grid-enhancements', 'flanking-square-override')) {
-		wrapped(flanker, other, flankee)
+	if (canvas.grid.isGridless && !game.settings.get('f2e-grid-enhancements', 'flanking-gridless-override') || canvas.grid.isHexagonal && !game.settings.get('f2e-grid-enhancements', 'flanking-hex-override') || canvas.grid.isSquare && !game.settings.get('f2e-grid-enhancements', 'flanking-square-override')) {
+		return wrapped(flanker, other, flankee)
 	}
 	// flanker data
 	const flanker_x = flanker.document.center.x / flanker.document.scene.grid.size
