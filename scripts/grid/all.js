@@ -107,12 +107,18 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	let distance = Infinity;
 	for (const origin of selfPoints) {
 		for (const destination of targetPoints) {
-			const distanceCandidate = canvas.grid.measurePath([origin, destination]).distance;
-			if (distanceCandidate < distance) {
+			const pathCandidate = canvas.grid.measurePath([origin, destination]);
+			// process reach for special case called out on square grids with a reach of 10
+			if (canvas.grid.isSquare && opts?.reach === 10) {
+				if (pathCandidate.distance === 15 && pathCandidate.segments[0].diagonals === 2) {
+					pathCandidate.distance = 10;
+				}
+			}
+			if (pathCandidate.distance < distance) {
 				if (opts?.collision_types?.length ?? 0 > 0) {
 					let cull = true;
 					for (const collision_type of opts.collision_types) {
-						if (collision_type == "sound") {
+						if (collision_type === "sound") {
 							if (!CONFIG.Canvas.polygonBackends.sound.testCollision(origin, destination, {
 								type: "sound",
 								mode: "any",
@@ -122,7 +128,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 								break;
 							}
 						}
-						if (collision_type == "sight") {
+						if (collision_type === "sight") {
 							if (!CONFIG.Canvas.polygonBackends.sight.testCollision(origin, destination, {
 								type: "sight",
 								mode: "any",
@@ -132,7 +138,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 								break;
 							}
 						}
-						if (collision_type == "move") {
+						if (collision_type === "move") {
 							if (!CONFIG.Canvas.polygonBackends.move.testCollision(origin, destination, {
 								type: "move",
 								mode: "any",
@@ -147,12 +153,10 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 						continue;
 					}
 				}
-				distance = distanceCandidate;
+				distance = pathCandidate.distance;
 			}
 		}
 	}
-	// process reach
-	distance -= opts?.reach ?? 0;
 	// return distance clamped to positive values
 	return Math.max(0, Math.round(distance * 10) / 10);
 }
@@ -199,14 +203,14 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 	if (data.displayMeasurements && data.highlightMode === "coverage") {
 		// fixup internal cone angle
 		for (let shape of data.shapes) {
-			if (shape.angle == 90 && shape.type == "cone") {
+			if (shape.angle === 90 && shape.type === "cone") {
 				shape.angle = canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-template-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-template-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-template-angle')
 			}
 		}
 		// support rotation with modified pf2e code
 		const placement = { aiming: false };
 		options.onMove = ({ event, position, preview, shape, snap }) => {
-			if (placement.aiming && (shape.type === "cone" || shape.type == "line")) {
+			if (placement.aiming && (shape.type === "cone" || shape.type === "line")) {
 				const rotation_angle = shape.type === "cone" ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
 				const angle = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
 				const snapped = event.ctrlKey || event.metaKey || canvas?.grid?.isGridless ? angle : angle.toNearest(rotation_angle);
@@ -221,7 +225,7 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 			return;
 		}
 		options.onRotate = ({ event, shape }) => {
-			if (shape.type === "cone" || shape.type == "line") {
+			if (shape.type === "cone" || shape.type === "line") {
 				const rotation_angle = shape.type === "cone" ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
 				const step = event.ctrlKey || event.metaKey ? 5 : rotation_angle;
 				const delta = step * Math.sign(event.deltaY);
@@ -232,7 +236,7 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 			return;
 		};
 		options.preConfirm = ({ event, shape }) => {
-			const aim = (shape.type === "cone" || shape.type == "line") && !event.shiftKey;
+			const aim = (shape.type === "cone" || shape.type === "line") && !event.shiftKey;
 			if (!placement.aiming && aim) {
 				placement.aiming = true;
 				return false;
@@ -252,10 +256,10 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 
 export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 	wrapped(event);
-	if (event.interactionData.shape.type == "circle" && game.activeTool == "point") {
+	if (event.interactionData.shape.type === "circle" && game.activeTool === "point") {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
-	} else if (self.templateMode && (event.interactionData.shape.type == "line" || event.interactionData.shape.type == "cone")) {
+	} else if (self.templateMode && (event.interactionData.shape.type === "line" || event.interactionData.shape.type === "cone")) {
 		const rotation_angle = event.interactionData.shape.type === "cone" ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
 		const rotation = event.interactionData.shape.rotation.toNearest(rotation_angle);
 		if (rotation !== event.interactionData.shape.rotation) {
@@ -279,7 +283,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		self.border.clear();
 	}
 	// Create aura border (token base type and polygon type didn't work for some reason)
-	if (self.border.geometry.graphicsData.length == 0) {
+	if (self.border.geometry.graphicsData.length === 0) {
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
 			const aura_shape = new foundry.data.EmanationShapeData({
 				type: "emanation",
@@ -346,7 +350,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		collision_types.push("move");
 	}
 	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {reach: self.radius, collision_types: collision_types}) == 0) {
+	if (self.token.object.distanceTo(token.object, {collision_types: collision_types}) <= self.radius) {
 		return true;
 	}
 	return false;
