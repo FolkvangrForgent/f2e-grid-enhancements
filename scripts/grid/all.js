@@ -108,11 +108,10 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	for (const origin of selfPoints) {
 		for (const destination of targetPoints) {
 			const pathCandidate = canvas.grid.measurePath([origin, destination]);
-			// process reach for special case called out on square grids with a reach of 10
-			if (canvas.grid.isSquare && opts?.reach === 10) {
-				if (pathCandidate.distance === 15 && pathCandidate.segments[0].diagonals === 2) {
-					pathCandidate.distance = 10;
-				}
+			// PF2e discounts one grid space after the second diagonal for 10-foot reach.
+			if (canvas.grid.isSquare && canvas.grid.diagonals === CONST.GRID_DIAGONALS.ALTERNATING_1
+				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1) {
+				pathCandidate.distance -= canvas.grid.distance;
 			}
 			if (pathCandidate.distance < distance) {
 				if (opts?.collision_types?.length ?? 0 > 0) {
