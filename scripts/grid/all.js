@@ -331,7 +331,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 
 export function Aura_token_containsToken(wrapped, self, token) {
 	// If either token is hidden or not rendered, return false early
-	if (self.token.hidden || token.hidden) {
+	if (self.token.hidden || token.hidden || !self.token.object || !token.object) {
 		return false;
 	}
 	// If the token is the one emitting the aura, return true early
