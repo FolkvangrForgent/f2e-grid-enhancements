@@ -108,9 +108,9 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	for (const origin of selfPoints) {
 		for (const destination of targetPoints) {
 			const pathCandidate = canvas.grid.measurePath([origin, destination]);
-			// PF2e discounts one grid space after the second diagonal for 10-foot reach.
-			if (canvas.grid.isSquare && canvas.grid.diagonals === CONST.GRID_DIAGONALS.ALTERNATING_1
-				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1) {
+			// discount 5 feet after the second diagonal for 10-foot reach
+			if (canvas.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(canvas.grid.diagonals)
+				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1 && canvas.grid.distance === 5) {
 				pathCandidate.distance -= canvas.grid.distance;
 			}
 			if (pathCandidate.distance < distance) {
