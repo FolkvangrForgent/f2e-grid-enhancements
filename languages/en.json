@@ -28,7 +28,9 @@
 			"flanking-square-override-name": "Square Custom Flanking Logic",
 			"flanking-square-override-hint": "Use the custom flanking logic on square maps. This logic checks the surface intersections points on an ellipsoid representation of the target.",
 			"default-grid-type-name": "Default Grid Type",
-			"default-grid-type-hint": "The default grid type to use when making a new scene."
+			"default-grid-type-hint": "The default grid type to use when making a new scene.",
+			"reach-exception-name": "Default Reach Exception",
+			"reach-exception-hint": "Use the 10 foot reach exception on square grids as called out in the rules."
 		}
 	}
 }

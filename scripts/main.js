@@ -195,6 +195,14 @@ Hooks.once('init', () => {
 		default: 1,
 		requiresReload: true
 	});
+	game.settings.register('f2e-grid-enhancements', 'reach-exception', {
+		name: 'f2e-grid-enhancements.setting.reach-exception-name',
+		hint: 'f2e-grid-enhancements.setting.reach-exception-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false
+	});
 	// setup default grid
 	game.system.grid = {type: game.settings.get('f2e-grid-enhancements', 'default-grid-type'), distance: 5, units: 'ft', diagonals: 4}
 });
@@ -202,7 +210,7 @@ Hooks.once('init', () => {
 
 
 // Custom template controls (requires CONFIG.F2e.MeasuredTemplate.layer._onDragLeftStart patch to function properly)
-Hooks.on("getSceneControlButtons", (controls) => {
+Hooks.on('getSceneControlButtons', (controls) => {
 	// ensure canvas is ready and controls contain regions
 	if (!canvas?.ready || !controls?.regions?.tools?.cone?.shapeData) {
 		return;
@@ -222,19 +230,19 @@ Hooks.on("getSceneControlButtons", (controls) => {
 		controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
 	}
 	controls.regions.tools.point = {
-		name: "point",
+		name: 'point',
 		order: 8,
 		creation: true,
 		control: !canvas.regions?.templateMode,
-		shapeData: {type: "circle", x: 0, y: 0, radius: 0},
-		title: canvas.grid.isHexagonal ? "f2e-grid-enhancements.region.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.region.square" : "f2e-grid-enhancements.region.point",
-		icon: canvas.grid.isHexagonal ? "fa-solid fa-hexagon" : canvas.grid.isSquare ? "fa-solid fa-square" : "fa-solid fa-circle",
+		shapeData: {type: 'circle', x: 0, y: 0, radius: 0},
+		title: canvas.grid.isHexagonal ? 'f2e-grid-enhancements.region.hex' : canvas.grid.isSquare ? 'f2e-grid-enhancements.region.square' : 'f2e-grid-enhancements.region.point',
+		icon: canvas.grid.isHexagonal ? 'fa-solid fa-hexagon' : canvas.grid.isSquare ? 'fa-solid fa-square' : 'fa-solid fa-circle',
 		toolclip: {
-			heading: canvas.grid.isHexagonal ? "f2e-grid-enhancements.region.hex" : canvas.grid.isSquare ? "f2e-grid-enhancements.region.square" : "f2e-grid-enhancements.region.point",
+			heading: canvas.grid.isHexagonal ? 'f2e-grid-enhancements.region.hex' : canvas.grid.isSquare ? 'f2e-grid-enhancements.region.square' : 'f2e-grid-enhancements.region.point',
 			items: foundry.applications.ui.SceneControls.buildToolclipItems([
-				!canvas.regions?.templateMode ? {paragraph: "CONTROLS.RegionShape"} : "",
-				"draw",
-				!canvas.regions?.templateMode ? {paragraph: "CONTROLS.RegionPerformance"} : ""
+				!canvas.regions?.templateMode ? {paragraph: 'CONTROLS.RegionShape'} : '',
+				'draw',
+				!canvas.regions?.templateMode ? {paragraph: 'CONTROLS.RegionPerformance'} : ''
 			])
 		}
 	}
@@ -256,13 +264,13 @@ const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 }, 100);
 
 // TODO is this the best hook? pretty sure this only happens after canvas ready which is helpfull at least
-const aura_finding_hook = Hooks.on("refreshToken", (token, event) => {
+const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 	if (token.auras.size > 0) {
 		const AuraRenderer = Object.getPrototypeOf(token.auras.entries().next().value[1])
 		const TokenAura = Object.getPrototypeOf(token.document.auras.entries().next().value[1])
 		if (AuraRenderer && TokenAura) {
 			aura_patcher(AuraRenderer, TokenAura);
-			Hooks.off("refreshToken", aura_finding_hook);
+			Hooks.off('refreshToken', aura_finding_hook);
 		}
 	} else {
 		return;
