@@ -201,7 +201,7 @@ Hooks.once('init', () => {
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
-		default: false
+		default: true
 	});
 	// setup default grid
 	game.system.grid = {type: game.settings.get('f2e-grid-enhancements', 'default-grid-type'), distance: 5, units: 'ft', diagonals: 4}
