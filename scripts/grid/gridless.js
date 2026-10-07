@@ -1,7 +1,3 @@
-export function Scene_document_canHaveAuras(wrapped, self) {
-	return true;
-}
-
 export function Aura_renderer_highlight(wrapped, self) {
 	let aura_base;
 	if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {

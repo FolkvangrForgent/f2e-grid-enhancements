@@ -1,7 +1,3 @@
-export function Scene_document_canHaveAuras(wrapped, self) {
-	return true;
-}
-
 export function Aura_renderer_draw(wrapped, self, showBorder) {
 	self.border.visible = false;
 }

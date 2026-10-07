@@ -1,163 +1,131 @@
-// TODO address token clipping through wall
-export function Token_object_distanceTo(wrapped, self, target, opts) {
-	// if target is self distance will always be 0
-	if (self === target) return 0;
-	// calculate the self points
-	const selfPoints = []
+function token_points(token, opts) {
+	const center_point = {
+		x: token.document.x,
+		y: token.document.y,
+		elevation: token.document.elevation + token.document.depth * token.document.scene.grid.distance / 2
+	};
+	const points = []
 	if (canvas.grid.isGridless) {
-		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.document.shape)) {
-			const width = Math.round(self.document.width) / 2;
-			const height = Math.round(self.document.height) / 2;
-			const depth = Math.round(self.document.depth) / 2;
+		// logic for shell points on supported shape otherwise center point
+		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token.document.shape)) {
+			const width = Math.round(token.document.width) / 2;
+			const height = Math.round(token.document.height) / 2;
+			const depth = Math.round(token.document.depth) / 2;
 			const resolution = Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 4) + 2))
 			for (let polar = 0; polar <= 1; polar += 1 / resolution) {
 				for (let azimuth = 0; azimuth <= 2; azimuth += 1 / resolution) {
-					selfPoints.push({
-						x: self.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * self.document.scene.grid.size,
-						y: self.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * self.document.scene.grid.size,
-						elevation: self.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * self.document.scene.grid.size
+					points.push({
+						x: token.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * token.document.scene.grid.size,
+						y: token.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * token.document.scene.grid.size,
+						elevation: token.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * token.document.scene.grid.size
 					});
 				}
 			}
-		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.document.shape)) {
-			const width = Math.round(self.document.width * 2) / 2;
-			const height = Math.round(self.document.height * 2) / 2;
-			const depth = Math.round(self.document.depth * 2) / 2;
+		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(token.document.shape)) {
+			const width = Math.round(token.document.width * 2) / 2;
+			const height = Math.round(token.document.height * 2) / 2;
+			const depth = Math.round(token.document.depth * 2) / 2;
 			for (let x = 0; x <= width; x += 0.5) {
 				for (let y = 0; y <= height; y += 0.5) {
 					for (let z = 0; z <= depth; z += 0.5) {
 						if (!(z === 0 || z === depth) && !((x === 0 || x === width) || (y === 0 || y === height))) {
 							continue;
 						}
-						selfPoints.push({
-							x: self.document.x + x * self.document.scene.grid.size,
-							y: self.document.y + y * self.document.scene.grid.size,
-							elevation: self.document.elevation + z * self.document.scene.grid.distance
+						points.push({
+							x: token.document.x + x * token.document.scene.grid.size,
+							y: token.document.y + y * token.document.scene.grid.size,
+							elevation: token.document.elevation + z * token.document.scene.grid.distance
 						});
 					}
 				}
 			}
 		} else {
-			selfPoints.push({
-				x: self.document.x,
-				y: self.document.y,
-				elevation: self.document.elevation + self.document.depth * self.document.scene.grid.distance / 2
-			});
+			points.push(center_point);
 		}
 	} else {
-		for (const offset of self.document.getOccupiedGridSpaceOffsets()) {
+		for (const offset of token.document.getOccupiedGridSpaceOffsets()) {
 			const point = canvas.grid.getCenterPoint(offset);
-			selfPoints.push(point);
+			points.push(point);
 		}
 	}
+	return points.filter((point) => {
+		if (opts?.collision_types?.length > 0) {
+			if (canvas.grid.isGridless) {
+				return true;
+			} else {
+				for (const collision_type of opts?.collision_types) {
+					if (!CONFIG.Canvas.polygonBackends[collision_type].testCollision(center_point, point, {mode: 'any'})) {
+						return true;
+					}
+				}
+			}
+		} else {
+			return true;
+		}
+		return false;
+	}).map((point) => {
+		if (canvas.grid.isGridless) {
+			let distance = 1;
+			for (const collision_type of opts?.collision_types ?? []) {
+				const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(center_point, point, {mode: 'closest'})
+				distance = Math.min(distance, collision?._distance ?? 1);
+			}
+			if (distance !== 1) {
+				point = {
+					x: center_point.x + (point.x - center_point.x) * (distance - 0.1),
+					y: center_point.y + (point.y - center_point.y) * (distance - 0.1),
+					elevation: center_point.elevation + (point.elevation - center_point.elevation) * (distance - 0.1),
+				}
+			}
+		}
+		return point;
+	});
+}
+
+// TODO address token clipping through wall
+export function Token_object_distanceTo(wrapped, self, target, opts) {
+	// if target is self distance will always be 0
+	if (self === target) return 0;
+	// calculate the self points
+	const selfPoints = token_points(self, opts);
 	// calculate the target points
 	let targetPoints = []
 	if (target instanceof CONFIG.Token.objectClass) {
-		if (canvas.grid.isGridless) {
-			if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(target.document.shape)) {
-				const width = Math.round(target.document.width) / 2;
-				const height = Math.round(target.document.height) / 2;
-				const depth = Math.round(target.document.depth);
-				const resolution = Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 4) + 2))
-				for (let polar = 0; polar <= 1; polar += 1 / resolution) {
-					for (let azimuth = 0; azimuth <= 2; azimuth += 1 / resolution) {
-						targetPoints.push({
-							x: target.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * target.document.scene.grid.size,
-							y: target.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * target.document.scene.grid.size,
-							elevation: target.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * target.document.scene.grid.size
-						});
-					}
-				}
-			} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(target.document.shape)) {
-				const width = Math.round(target.document.width * 2) / 2;
-				const height = Math.round(target.document.height * 2) / 2;
-				const depth = Math.round(target.document.depth * 2) / 2;
-				for (let x = 0; x <= width; x += 0.5) {
-					for (let y = 0; y <= height; y += 0.5) {
-						for (let z = 0; z <= depth; z += 0.5) {
-							if (!(z === 0 || z === depth) && !((x === 0 || x === width) || (y === 0 || y === height))) {
-								continue;
-							}
-							targetPoints.push({
-								x: target.document.x + x * target.document.scene.grid.size,
-								y: target.document.y + y * target.document.scene.grid.size,
-								elevation: target.document.elevation + z * target.document.scene.grid.distance
-							});
-						}
-					}
-				}
-			} else {
-				targetPoints.push({
-					x: target.document.x,
-					y: target.document.y,
-					elevation: target.document.elevation + target.document.depth * target.document.scene.grid.distance / 2
-				});
-			}
-		} else {
-			for (const offset of target.document.getOccupiedGridSpaceOffsets()) {
-				const point = canvas.grid.getCenterPoint(offset)
-				targetPoints.push(point);
-			}
-		}
+		targetPoints = token_points(target, opts);
 	} else {
-		// center point (and add elevation until PF2e point is 3D)
-		targetPoints.push(canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: target.document?.elevation ?? self.document.elevation}));
+		targetPoints = [canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: target?.elevation ?? self.document.elevation})];
 	}
 	// calculate minimum distance
-	let distance = Infinity;
+	let candidates = [];
 	for (const origin of selfPoints) {
 		for (const destination of targetPoints) {
 			const pathCandidate = canvas.grid.measurePath([origin, destination]);
-			// discount 5 feet after the second diagonal for 10-foot reach
+			// discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid.
 			if (game.settings.get('f2e-grid-enhancements', 'reach-exception') && canvas.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(canvas.grid.diagonals)
 				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1 && canvas.grid.distance === 5 && canvas.grid.units === 'ft') {
 				pathCandidate.distance -= canvas.grid.distance;
 			}
-			if (pathCandidate.distance < distance) {
-				if (opts?.collision_types?.length ?? 0 > 0) {
-					let cull = true;
-					for (const collision_type of opts.collision_types) {
-						if (collision_type === 'sound') {
-							if (!CONFIG.Canvas.polygonBackends.sound.testCollision(origin, destination, {
-								type: 'sound',
-								mode: 'any',
-								source: new foundry.canvas.sources.PointSoundSource({object: self})
-							})) {
-								cull = false;
-								break;
-							}
-						}
-						if (collision_type === 'sight') {
-							if (!CONFIG.Canvas.polygonBackends.sight.testCollision(origin, destination, {
-								type: 'sight',
-								mode: 'any',
-								source: new foundry.canvas.sources.PointVisionSource({object: self})
-							})) {
-								cull = false;
-								break;
-							}
-						}
-						if (collision_type === 'move') {
-							if (!CONFIG.Canvas.polygonBackends.move.testCollision(origin, destination, {
-								type: 'move',
-								mode: 'any',
-								source: new foundry.canvas.sources.PointMovementSource({object: self})
-							})) {
-								cull = false;
-								break;
-							}
-						}
-					}
-					if (cull) {
-						continue;
-					}
-				}
-				distance = pathCandidate.distance;
-			}
+			candidates.push({
+				origin: origin,
+				destination: destination,
+				distance: pathCandidate.distance
+			});
 		}
 	}
-	// return distance clamped to positive values
-	return Math.max(0, Math.round(distance * 10) / 10);
+	candidates.sort((a, b) => a.distance - b.distance);
+	for (const candidate of candidates) {
+		let skip = opts?.collision_types?.length > 0;
+		for (const collision_type of opts?.collision_types ?? []) {
+			if (!CONFIG.Canvas.polygonBackends[collision_type].testCollision(candidate.origin, candidate.destination, {mode: 'any'})) {
+				skip = false;
+			}
+		}
+		if (skip) {
+			continue;
+		}
+		return Math.max(0, Math.round(candidate.distance * 10) / 10);
+	}
+	return Infinity;
 }
 
 export function Token_object__onClickLeft2(wrapped, self, event) {
@@ -268,6 +236,13 @@ export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 	}
 }
 
+export function Scene_document_canHaveAuras(wrapped, self) {
+	if (self.grid.units === 'ft') {
+		return true;
+	}
+	return false;
+}
+
 export function Aura_renderer_draw(wrapped, self, showBorder) {
 	// If the token is GM hidden, don't render anything
 	if (self.token.document.hidden && !self.token.visible) {
@@ -337,19 +312,19 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	if (token === self.token) {
 		return true;
 	}
-	// decide what collision types to test against
-	const collision_types = []
+	// decide what collision types to test against quick survey and I think using || when visual and auditory is set is RAI but could be convinced to make that optional
+	const collisions = [];
 	if (self.traits.includes('auditory')) {
-		collision_types.push('sound');
+		collisions.push('sound');
 	}
-	if (self.traits.includes('visual') || !self.traits.includes('auditory') && !self.traits.includes('visual')) {
-		collision_types.push('sight');
+	if (self.traits.includes('visual')) {
+		collisions.push('sight');
 	}
 	if (!self.traits.includes('auditory') && !self.traits.includes('visual')) {
-		collision_types.push('move');
+		collisions.push('move');
 	}
 	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {collision_types: collision_types}) <= self.radius) {
+	if (self.token.object.distanceTo(token.object, {collisions: collisions}) <= self.radius) {
 		return true;
 	}
 	return false;
