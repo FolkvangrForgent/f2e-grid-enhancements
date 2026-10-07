@@ -19,6 +19,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - (GM) `cone` internal angle can be configured for all default grid types
     - (GM) `cone` snapping angle can be configured for all default grid types
     - (GM) Default new grid type
+    - (GM) Disable default reach exception
     - [experimental] (GM) Flanking logic overrides and related setting
 - Chat Template
     - Snapping
@@ -33,19 +34,21 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Token
     - Custom `distanceTo` function for correct range calculation between tokens with token depth support
     - [experimental] Custom `onOppositeSides` function logic that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
+- Aura
+    - Only activate on grids with units of 'ft'
 
 ### Hex Improvements
 
+- Token
+    - Reach enforcement support
 - Aura
     - Support aura via extending system implementaion
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
-- Token
-    - Reach enforcement support
 
 ### Square Improvements
 
 - Aura
-    - Utilize `distanceTo` function for determining which tokens are in the aura
+    - Utilize custom `distanceTo` function for determining which tokens are in the aura
     - More accurate border shape
 
 ### Gridless Improvements
