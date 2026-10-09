@@ -1,9 +1,57 @@
+function closest_surface_wall_collision(origin, destination, opts) {
+	if (!(opts?.collision_types?.length > 0)) {
+		return null;
+	}
+	const upwards = origin.elevation <= destination.elevation;
+	let wall_collision = null;
+	let wall_collision_distance = 1;
+	for (const collision_type of opts?.collision_types ?? []) {
+		const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {mode: 'closest'})
+		if (collision?._distance < wall_collision_distance) {
+			wall_collision_distance = collision?._distance;
+			wall_collision = {
+				x: origin.x + (destination.x - origin.x) * wall_collision_distance,
+				y: origin.y + (destination.y - origin.y) * wall_collision_distance,
+				elevation: origin.elevation + (destination.elevation - origin.elevation) * wall_collision_distance,
+			};
+		}
+	}
+	let surface_collision = null;
+	let surface_collision_elevation;
+	if ( upwards ) {
+		surface_collision_elevation = destination.elevation;
+	} else {
+		surface_collision_elevation = origin.elevation;
+	}
+	for (const collision_type of opts?.collision_types ?? []) {
+		for (const level of canvas.scene.levels.keys()) {
+			if ( upwards ) {
+				let collision = canvas.scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "above", level});
+				if (collision?.elevation < surface_collision_elevation) {
+					surface_collision_elevation = collision?.elevation;
+					surface_collision = collision;
+				}
+			} else {
+				let collision = canvas.scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "below", level});
+				if (collision?.elevation > surface_collision_elevation) {
+					surface_collision_elevation = collision?.elevation;
+					surface_collision = collision;
+				}
+			}
+		}
+	}
+	if ( !surface_collision ) return wall_collision;
+	if ( !wall_collision ) return surface_collision;
+	if ( upwards ) {
+		return wall_collision.elevation <= surface_collision.elevation ? wall_collision : surface_collision;
+	} else {
+		return wall_collision.elevation >= surface_collision.elevation ? wall_collision : surface_collision;
+	}
+}
+
 function token_points(token, opts) {
-	const center_point = {
-		x: token.document.x,
-		y: token.document.y,
-		elevation: token.document.elevation + token.document.depth * token.document.scene.grid.distance / 2
-	};
+	const center_point = token.getCenterPoint();
+	center_point.elevation = token.document.elevation + token.document.depth / 2
 	const points = []
 	if (canvas.grid.isGridless) {
 		// logic for shell points on supported shape otherwise center point
@@ -43,46 +91,32 @@ function token_points(token, opts) {
 			points.push(center_point);
 		}
 	} else {
+		// TODO getOccupiedGridSpaceOffsets is contrained by "move" :\ also doesn't work well with getting center point fml
 		for (const offset of token.document.getOccupiedGridSpaceOffsets()) {
 			const point = canvas.grid.getCenterPoint(offset);
 			points.push(point);
 		}
 	}
 	return points.filter((point) => {
-		if (opts?.collision_types?.length > 0) {
-			if (canvas.grid.isGridless) {
-				return true;
-			} else {
-				for (const collision_type of opts?.collision_types) {
-					if (!CONFIG.Canvas.polygonBackends[collision_type].testCollision(center_point, point, {mode: 'any'})) {
-						return true;
-					}
-				}
-			}
-		} else {
+		if (canvas.grid.isGridless || closest_surface_wall_collision(center_point, point, opts) === null) {
 			return true;
 		}
 		return false;
 	}).map((point) => {
 		if (canvas.grid.isGridless) {
-			let distance = 1;
-			for (const collision_type of opts?.collision_types ?? []) {
-				const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(center_point, point, {mode: 'closest'})
-				distance = Math.min(distance, collision?._distance ?? 1);
-			}
-			if (distance !== 1) {
-				point = {
-					x: center_point.x + (point.x - center_point.x) * (distance - 0.1),
-					y: center_point.y + (point.y - center_point.y) * (distance - 0.1),
-					elevation: center_point.elevation + (point.elevation - center_point.elevation) * (distance - 0.1),
-				}
+			const collision = closest_surface_wall_collision(center_point, point, opts);
+			if (collision !== null) {
+				return {
+					x: collision.x + (center_point.x - collision.x) * 0.1,
+					y: collision.y + (center_point.y - collision.y) * 0.1,
+					elevation: collision.elevation + (center_point.elevation - collision.elevation) * 0.1
+				};
 			}
 		}
 		return point;
 	});
 }
 
-// TODO address token clipping through wall
 export function Token_object_distanceTo(wrapped, self, target, opts) {
 	// if target is self distance will always be 0
 	if (self === target) return 0;
@@ -114,16 +148,9 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	}
 	candidates.sort((a, b) => a.distance - b.distance);
 	for (const candidate of candidates) {
-		let skip = opts?.collision_types?.length > 0;
-		for (const collision_type of opts?.collision_types ?? []) {
-			if (!CONFIG.Canvas.polygonBackends[collision_type].testCollision(candidate.origin, candidate.destination, {mode: 'any'})) {
-				skip = false;
-			}
+		if (opts?.collision_types === undefined || closest_surface_wall_collision(candidate.origin, candidate.destination, opts) === null) {
+			return Math.max(0, Math.round(candidate.distance * 10) / 10);
 		}
-		if (skip) {
-			continue;
-		}
-		return Math.max(0, Math.round(candidate.distance * 10) / 10);
 	}
 	return Infinity;
 }
@@ -324,7 +351,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		collisions.push('move');
 	}
 	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {collisions: collisions}) <= self.radius) {
+	if (self.token.object.distanceTo(token.object, {collision_types: collisions}) <= self.radius) {
 		return true;
 	}
 	return false;
