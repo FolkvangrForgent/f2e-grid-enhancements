@@ -91,7 +91,7 @@ function token_points(token, opts) {
 			points.push(center_point);
 		}
 	} else {
-		// TODO getOccupiedGridSpaceOffsets is contrained by "move" :\ also doesn't work well with getting center point fml
+		// TODO getOccupiedGridSpaceOffsets is contrained by "move" :\ create custom copy without this constraint and open fvtt issue ticket for flag to override
 		for (const offset of token.document.getOccupiedGridSpaceOffsets()) {
 			const point = canvas.grid.getCenterPoint(offset);
 			points.push(point);
@@ -139,11 +139,14 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1 && canvas.grid.distance === 5 && canvas.grid.units === 'ft') {
 				pathCandidate.distance -= canvas.grid.distance;
 			}
-			candidates.push({
-				origin: origin,
-				destination: destination,
-				distance: pathCandidate.distance
-			});
+			// aura radius check here to skip some collision checks
+			if (opts?.aura_radius ?? Infinity >= pathCandidate.distance) {
+				candidates.push({
+					origin: origin,
+					destination: destination,
+					distance: pathCandidate.distance
+				});
+			}
 		}
 	}
 	candidates.sort((a, b) => a.distance - b.distance);
@@ -351,7 +354,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		collisions.push('move');
 	}
 	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {collision_types: collisions}) <= self.radius) {
+	if (self.token.object.distanceTo(token.object, {collision_types: collisions, aura_radius: self.radius / 5 * self.token.scene.grid.distance}) !== Infinity) {
 		return true;
 	}
 	return false;

@@ -32,10 +32,17 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
         - Angle
             - `cone` internal angle and snapping angle can be configured
 - Token
-    - Custom `distanceTo` function for correct range calculation between tokens with token depth support
+    - Custom `distanceTo` function with support for token depth, all token shapes, and all default grid types. Also rounds results to nearest tenth
     - [experimental] Custom `onOppositeSides` function logic that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Aura
     - Only activate on grids with units of 'ft'
+    - Use an algorithm that is often more premissive than the system algorithm.
+        - On Square and Hex Grids
+            - For both tokens generate all grid points that a token occupies. Filtering out points that would collide with any walls or surfaces of the aura's type
+            - Check each point of one token to each point of the other for one that doesn't collide with a wall and is the correct distance away
+        - On Gridless Grids
+            - For both tokens generate a set of grid points on the surfaces of the token. Modify all surface points as to not collide wil any walls or surfaces of the aura's type
+            - Check each point of one token to each point of the other for one that doesn't collide with a wall and is the correct distance away
 
 ### Hex Improvements
 
