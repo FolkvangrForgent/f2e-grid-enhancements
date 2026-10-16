@@ -263,7 +263,6 @@ const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 	patch_function('CONFIG.F2e.Scene.document.canHaveAuras');
 }, 100);
 
-// TODO is this the best hook? pretty sure this only happens after canvas ready which is helpfull at least
 const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 	if (token.auras.size > 0) {
 		const AuraRenderer = Object.getPrototypeOf(token.auras.entries().next().value[1])
@@ -276,5 +275,3 @@ const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 		return;
 	}
 });
-
-// TODO grid agnostic target helper with v2 application
