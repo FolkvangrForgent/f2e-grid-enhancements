@@ -37,6 +37,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Aura
     - Only activate on grids with units of 'ft'
+    - Custom aura `containsToken` function
     - Use an algorithm that is often more permissive than the system algorithm
         - Determine if a token is in range of the token emitting an aura
         - Generate a shell of points on the token the aura may be affecting (constraining these by walls of the auras type)
@@ -49,13 +50,11 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Aura
     - Support aura via extending system implementation
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
-    - Custom aura `containsToken` function
 
 
 ### Square Improvements
 
 - Aura
-    - Custom aura `containsToken` function
     - More accurate border shape
 
 ### Gridless Improvements
@@ -64,7 +63,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - Reach enforcement support
 - Aura
     - Support aura via extending system implementation
-    - Custom aura `containsToken` function
     - More accurate border shape
 
 ### Languages
