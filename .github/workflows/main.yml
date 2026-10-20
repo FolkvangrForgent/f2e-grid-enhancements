@@ -34,9 +34,17 @@ jobs:
           MANIFEST: ${{ env.latest_manifest_url }}
           DOWNLOAD: ${{ env.release_module_url }}
 
+
+      - name: Make packs
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+        run: npm ci
+        run: npm run build:packs
+
       - name: Create Module Archive
         run: |
-          zip -r ./module.zip module.json scripts/ languages/
+          zip -r ./module.zip module.json scripts/ languages/ packs/
 
       - name: Update Release With Files
         id: create_version_release

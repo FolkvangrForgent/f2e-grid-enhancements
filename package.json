@@ -1,0 +1,8 @@
+{
+	"devDependencies": {
+		"@foundryvtt/foundryvtt-cli": "^3.0.5"
+	},
+	"scripts": {
+		"build:packs": "node node_scripts/build-packs.mjs"
+	}
+}
