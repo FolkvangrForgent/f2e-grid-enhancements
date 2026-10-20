@@ -32,30 +32,30 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
         - Angle
             - `cone` internal angle and snapping angle can be configured
 - Token
-    - Custom `distanceTo` function with support for token depth, all token shapes, and all default grid types. Also rounds results to nearest tenth
-    - [experimental] Custom `onOppositeSides` function logic that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
+    - Custom `distanceTo` function with support for token depth, all token shapes, and all default grid types
+        - Rounds results to nearest tenth
+    - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Aura
     - Only activate on grids with units of 'ft'
-    - Use an algorithm that is often more premissive than the system algorithm.
-        - On Square and Hex Grids
-            - For both tokens generate all grid points that a token occupies. Filtering out points that would collide with any walls or surfaces of the aura's type
-            - Check each point of one token to each point of the other for one that doesn't collide with a wall and is the correct distance away
-        - On Gridless Grids
-            - For both tokens generate a set of grid points on the surfaces of the token. Modify all surface points as to not collide wil any walls or surfaces of the aura's type
-            - Check each point of one token to each point of the other for one that doesn't collide with a wall and is the correct distance away
+    - Use an algorithm that is often more permissive than the system algorithm
+        - Determine if a token is in range of the token emitting an aura
+        - Generate a shell of points on the token the aura may be affecting (constraining these by walls of the auras type)
+        - Check from the center of the token emitting the aura to shell points around the token if any do not collide then the aura is applied
 
 ### Hex Improvements
 
 - Token
     - Reach enforcement support
 - Aura
-    - Support aura via extending system implementaion
+    - Support aura via extending system implementation
         - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
+    - Custom aura `containsToken` function
+
 
 ### Square Improvements
 
 - Aura
-    - Utilize custom `distanceTo` function for determining which tokens are in the aura
+    - Custom aura `containsToken` function
     - More accurate border shape
 
 ### Gridless Improvements
@@ -63,7 +63,8 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Token
     - Reach enforcement support
 - Aura
-    - Support aura via extending system implementaion
+    - Support aura via extending system implementation
+    - Custom aura `containsToken` function
     - More accurate border shape
 
 ### Languages
@@ -76,7 +77,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 ### Difficult Terrain
 
-I have taken a quick look at difficult terrain but at the point where it can produces unsatisfacotry results even on square grids and it was not a simple fix to extend to other grid types I have not worked on it. I am open to suggestions on how to make it work or any MR/PR that is submitted.
+I have taken a quick look at difficult terrain but at the point where it can produces unsatisfactory results even on square grids and it was not a simple fix to extend to other grid types I have not worked on it. I am open to suggestions on how to make it work or any MR/PR that is submitted.
 
 ### Flanking
 

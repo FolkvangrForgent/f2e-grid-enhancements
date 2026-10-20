@@ -1,20 +1,211 @@
-function closest_surface_wall_collision(origin, destination, opts) {
-	if (!(opts?.collision_types?.length > 0)) {
-		return null;
+// yet another function I have to copy and modify from foundryvtt core
+function getOccupiedGridSpaceOffsets(self, flat=false) {
+	const offsets = [];
+	const grid = self.parent?.grid ?? foundry.documents.BaseScene.defaultGrid;
+	// Get the top-left grid offset
+	const {i: i0, j: j0, k: k0} = self._positionToGridOffset();
+	// Round width and height to nearest multiple of 0.5
+	const width = Math.max(Math.round(self.width * 2) / 2, 0.5);
+	const height = Math.max(Math.round(self.height * 2) / 2, 0.5);
+	const depth = Math.max(Math.round(self.depth * 2) / 2, 0.5);
+	const k1 = k0 + Math.ceil(depth);
+	// Square grid
+	if ( grid.isSquare ) {
+		const i1 = i0 + Math.ceil(height);
+		const j1 = j0 + Math.ceil(width);
+		for ( let i = i0; i < i1; i++ ) {
+			for ( let j = j0; j < j1; j++ ) {
+				if (flat) {
+					offsets.push({i, j, k: 0});
+				} else {
+					for ( let k = k0; k < k1; k++ ) {
+						const offset = {i, j, k};
+						offsets.push(offset);
+					}
+				}
+			}
+		}
 	}
+	// Hexagonal grid
+	else if (grid.isHexagonal) {
+		const {even: offsetsEven, odd: offsetsOdd} = foundry.documents.BaseToken._getHexagonalOffsets(width, height, self.shape, grid.columns);
+		const isEven = ((grid.columns ? j0 : i0) % 2 === 0) === grid.even;
+		for ( const {i: di, j: dj} of (isEven ? offsetsEven : offsetsOdd) ) {
+			if (flat) {
+				offsets.push({i: i0 + di, j: j0 + dj, k: 0});
+			} else {
+				for ( let k = k0; k < k1; k++ ) {
+					const offset = {i: i0 + di, j: j0 + dj, k};
+					offsets.push(offset);
+				}
+			}
+		}
+	}
+	return offsets;
+}
+
+function generate_center_point(token_object) {
+	// get center point and add elevation to make a ElevatedPoint that is in the exact center of the token
+	const center_point = token_object.getCenterPoint();
+	center_point.elevation = token_object.document.elevation + token_object.document.depth / 2;
+	return center_point;
+}
+
+function generate_shell_points(token_object, high_resolution=false) {
+	if (canvas.grid.isGridless) {
+		const shell_points = [];
+		const resolution = high_resolution ? 4 : 2;
+		const width = Math.round(token_object.document.width * resolution) / resolution;
+		const height = Math.round(token_object.document.height * resolution) / resolution;
+		const depth = Math.round(token_object.document.depth * resolution) / resolution;
+		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token_object.document.shape)) {
+			// TODO check this generates a similar number of point to rectangle and adjust key resolution points 2 and high resolution
+			const shell_resolution = 1 / Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 2 * resolution) + 2));
+			for (let polar = 0; polar <= 1; polar += shell_resolution) {
+				for (let azimuth = 0; azimuth <= 2; azimuth += shell_resolution) {
+					shell_points.push({
+						x: token_object.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * token_object.document.scene.grid.size,
+						y: token_object.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * token_object.document.scene.grid.size,
+						elevation: token_object.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * token_object.document.scene.grid.size
+					});
+				}
+			}
+		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(token_object.document.shape)) {
+			const shell_resolution = 1 / resolution;
+			for (let x = 0; x <= width; x += shell_resolution) {
+				for (let y = 0; y <= height; y += shell_resolution) {
+					for (let z = 0; z <= depth; z += shell_resolution) {
+						if (!(z === 0 || z === depth) && !((x === 0 || x === width) || (y === 0 || y === height))) {
+							continue;
+						}
+						shell_points.push({
+							x: token_object.document.x + x * token_object.document.scene.grid.size,
+							y: token_object.document.y + y * token_object.document.scene.grid.size,
+							elevation: token_object.document.elevation + z * token_object.document.scene.grid.distance
+						});
+					}
+				}
+			}
+		}
+		return shell_points;
+	} else if (canvas.grid.isSquare) {
+		const shell_points = [];
+		if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(token_object.document.shape)) {
+			const width = Math.round(token_object.document.width * 2) / 2;
+			const height = Math.round(token_object.document.height * 2) / 2;
+			const depth = Math.round(token_object.document.depth * 2) / 2;
+			for (let x = 0; x <= width; x += 0.5) {
+				for (let y = 0; y <= height; y += 0.5) {
+					for (let z = 0; z <= depth; z += 0.5) {
+						if (!(z === 0 || z === depth) && !((x === 0 || x === width) || (y === 0 || y === height))) {
+							continue;
+						}
+						shell_points.push({
+							x: token_object.document.x + x * token_object.document.scene.grid.size,
+							y: token_object.document.y + y * token_object.document.scene.grid.size,
+							elevation: token_object.document.elevation + z * token_object.document.scene.grid.distance
+						});
+					}
+				}
+			}
+		}
+		return shell_points;
+	} else if (canvas.grid.isHexagonal) {
+		// use set to deduplicate
+		const shell_points = new Set();
+		// generate column of shape using getShape
+		const token_shape = token_object.getShape();
+		const depth = Math.round(token_object.document.depth * 2) / 2;
+		for (let z = 0; z <= depth; z += 0.5) {
+			const elevation = token_object.document.elevation + z * token_object.document.scene.grid.distance;
+			let previous_point = null;
+			for (let index = 0; index < token_shape.points.length; index += 2) {
+				const point = {
+					x: token_shape.points[index] + token_object.x,
+					y: token_shape.points[index + 1] + token_object.y,
+					elevation: elevation
+				};
+				shell_points.add(point);
+				if (previous_point !== null) {
+					shell_points.add({
+						x: (point.x + previous_point.x) / 2,
+						y: (point.y + previous_point.y) / 2,
+						elevation: elevation
+					});
+				}
+				previous_point = point;
+			}
+		}
+		const top = token_object.document.elevation + depth * token_object.document.scene.grid.distance;
+		const bottom = token_object.document.scene.grid.distance;
+		for (const offset of getOccupiedGridSpaceOffsets(token_object.document, true)) {
+			const point = canvas.grid.getCenterPoint(offset);
+			shell_points.add({
+				x: point.x,
+				y: point.y,
+				elevation: top
+			});
+			shell_points.add({
+				x: point.x,
+				y: point.y,
+				elevation: bottom
+			});
+			for (const adjacent_offset of canvas.grid.getAdjacentOffsets(offset)) {
+				if (offset.k === adjacent_offset.k) {
+					const adjacent_point = canvas.grid.getCenterPoint(adjacent_offset);
+					shell_points.add({
+						x: (point.x * 3 + adjacent_point.x) / 4,
+						y: (point.y * 3 + adjacent_point.y) / 4,
+						elevation: top
+					});
+					shell_points.add({
+						x: (point.x * 3 + adjacent_point.x) / 4,
+						y: (point.y * 3 + adjacent_point.y) / 4,
+						elevation: bottom
+					});
+					shell_points.add({
+						x: (point.x + adjacent_point.x) / 2,
+						y: (point.y + adjacent_point.y) / 2,
+						elevation: top
+					});
+					shell_points.add({
+						x: (point.x + adjacent_point.x) / 2,
+						y: (point.y + adjacent_point.y) / 2,
+						elevation: bottom
+					});
+				}
+			}
+			for (const grid_point of canvas.grid.getVertices(offset)) {
+				shell_points.add({
+					x: grid_point.x,
+					y: grid_point.y,
+					elevation: top
+				});
+				shell_points.add({
+					x: grid_point.x,
+					y: grid_point.y,
+					elevation: bottom
+				});
+			}
+		}
+		return Array.from(shell_points);
+	}
+	return [];
+}
+
+// TODO check for side effects or more efficient ways to do this
+function closest_surface_wall_collision(origin, destination, collision_type, scene) {
 	const upwards = origin.elevation <= destination.elevation;
 	let wall_collision = null;
 	let wall_collision_distance = 1;
-	for (const collision_type of opts?.collision_types ?? []) {
-		const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {mode: 'closest'})
-		if (collision?._distance < wall_collision_distance) {
-			wall_collision_distance = collision?._distance;
-			wall_collision = {
-				x: origin.x + (destination.x - origin.x) * wall_collision_distance,
-				y: origin.y + (destination.y - origin.y) * wall_collision_distance,
-				elevation: origin.elevation + (destination.elevation - origin.elevation) * wall_collision_distance,
-			};
-		}
+	const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {type: collision_type, mode: 'closest'})
+	if (collision?._distance < wall_collision_distance) {
+		wall_collision_distance = collision?._distance;
+		wall_collision = {
+			x: origin.x + (destination.x - origin.x) * wall_collision_distance,
+			y: origin.y + (destination.y - origin.y) * wall_collision_distance,
+			elevation: origin.elevation + (destination.elevation - origin.elevation) * wall_collision_distance,
+		};
 	}
 	let surface_collision = null;
 	let surface_collision_elevation;
@@ -23,20 +214,18 @@ function closest_surface_wall_collision(origin, destination, opts) {
 	} else {
 		surface_collision_elevation = origin.elevation;
 	}
-	for (const collision_type of opts?.collision_types ?? []) {
-		for (const level of canvas.scene.levels.keys()) {
-			if ( upwards ) {
-				let collision = canvas.scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "above", level});
-				if (collision?.elevation < surface_collision_elevation) {
-					surface_collision_elevation = collision?.elevation;
-					surface_collision = collision;
-				}
-			} else {
-				let collision = canvas.scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "below", level});
-				if (collision?.elevation > surface_collision_elevation) {
-					surface_collision_elevation = collision?.elevation;
-					surface_collision = collision;
-				}
+	for (const level of scene.levels.keys()) {
+		if ( upwards ) {
+			let collision = scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "above", level});
+			if (collision?.elevation < surface_collision_elevation) {
+				surface_collision_elevation = collision?.elevation;
+				surface_collision = collision;
+			}
+		} else {
+			let collision = scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "below", level});
+			if (collision?.elevation > surface_collision_elevation) {
+				surface_collision_elevation = collision?.elevation;
+				surface_collision = collision;
 			}
 		}
 	}
@@ -49,62 +238,30 @@ function closest_surface_wall_collision(origin, destination, opts) {
 	}
 }
 
-function token_points(token, opts) {
-	const center_point = token.getCenterPoint();
-	center_point.elevation = token.document.elevation + token.document.depth / 2
-	const points = []
-	if (canvas.grid.isGridless) {
-		// logic for shell points on supported shape otherwise center point
-		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token.document.shape)) {
-			const width = Math.round(token.document.width) / 2;
-			const height = Math.round(token.document.height) / 2;
-			const depth = Math.round(token.document.depth) / 2;
-			const resolution = Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 4) + 2))
-			for (let polar = 0; polar <= 1; polar += 1 / resolution) {
-				for (let azimuth = 0; azimuth <= 2; azimuth += 1 / resolution) {
-					points.push({
-						x: token.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * token.document.scene.grid.size,
-						y: token.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * token.document.scene.grid.size,
-						elevation: token.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * token.document.scene.grid.size
-					});
-				}
-			}
-		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(token.document.shape)) {
-			const width = Math.round(token.document.width * 2) / 2;
-			const height = Math.round(token.document.height * 2) / 2;
-			const depth = Math.round(token.document.depth * 2) / 2;
-			for (let x = 0; x <= width; x += 0.5) {
-				for (let y = 0; y <= height; y += 0.5) {
-					for (let z = 0; z <= depth; z += 0.5) {
-						if (!(z === 0 || z === depth) && !((x === 0 || x === width) || (y === 0 || y === height))) {
-							continue;
-						}
-						points.push({
-							x: token.document.x + x * token.document.scene.grid.size,
-							y: token.document.y + y * token.document.scene.grid.size,
-							elevation: token.document.elevation + z * token.document.scene.grid.distance
-						});
-					}
-				}
+// TODO check for side effects or more efficient ways to do this
+function any_surface_wall_collision(origin, destination, collision_type, scene) {
+	if (CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {type: collision_type, mode: 'any'})) {
+		return true;
+	}
+	const upwards = origin.elevation <= destination.elevation;
+	for (const level of scene.levels.keys()) {
+		if ( upwards ) {
+			if (scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "any", side: "above", level})) {
+				return true;
 			}
 		} else {
-			points.push(center_point);
-		}
-	} else {
-		// TODO getOccupiedGridSpaceOffsets is contrained by "move" :\ create custom copy without this constraint and open fvtt issue ticket for flag to override
-		for (const offset of token.document.getOccupiedGridSpaceOffsets()) {
-			const point = canvas.grid.getCenterPoint(offset);
-			points.push(point);
+			if (scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "any", side: "below", level})) {
+				return true;
+			}
 		}
 	}
-	return points.filter((point) => {
-		if (canvas.grid.isGridless || closest_surface_wall_collision(center_point, point, opts) === null) {
-			return true;
-		}
-		return false;
-	}).map((point) => {
-		if (canvas.grid.isGridless) {
-			const collision = closest_surface_wall_collision(center_point, point, opts);
+	return false;
+}
+
+function constrain_shell_points(shell_points, center_point, collision_types, scene) {
+	return shell_points.map((shell_point) => {
+		for (const collision_type of collision_types) {
+			const collision = closest_surface_wall_collision(center_point, shell_point, collision_type, scene);
 			if (collision !== null) {
 				return {
 					x: collision.x + (center_point.x - collision.x) * 0.1,
@@ -112,50 +269,62 @@ function token_points(token, opts) {
 					elevation: collision.elevation + (center_point.elevation - collision.elevation) * 0.1
 				};
 			}
+			return shell_point;
 		}
-		return point;
 	});
+}
+
+// TODO optimization?
+function cull_shell_points(shell_points, center_point, destination_point) {
+	return shell_points;
+}
+
+function randomize_shell_points(shell_points) {
+	for (let index = shell_points.length - 1; index > 0; index--) {
+		const random_index = Math.floor(Math.random() * (index + 1));
+		const temporary_value = shell_points[index];
+		shell_points[index] = shell_points[random_index];
+		shell_points[random_index] = temporary_value;
+	}
+	return shell_points;
+}
+
+function token_points(token_object) {
+	if (canvas.grid.isGridless) {
+		return  generate_shell_points(token_object, true);
+	}
+	return getOccupiedGridSpaceOffsets(token_object.document).map((offset) => {return token_object.scene.grid.getCenterPoint(offset)});
 }
 
 export function Token_object_distanceTo(wrapped, self, target, opts) {
 	// if target is self distance will always be 0
 	if (self === target) return 0;
-	// calculate the self points
-	const selfPoints = token_points(self, opts);
-	// calculate the target points
-	let targetPoints = []
+	// calculate self points
+	const self_points = token_points(self, opts);
+	// calculate target points
+	let target_points = []
 	if (target instanceof CONFIG.Token.objectClass) {
-		targetPoints = token_points(target, opts);
+		target_points = token_points(target, opts);
 	} else {
-		targetPoints = [canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: target?.elevation ?? self.document.elevation})];
+		target_points = [canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: target?.elevation ?? self.document.elevation})];
 	}
-	// calculate minimum distance
-	let candidates = [];
-	for (const origin of selfPoints) {
-		for (const destination of targetPoints) {
-			const pathCandidate = canvas.grid.measurePath([origin, destination]);
+	// calculate distance
+	let distance = Infinity;
+	for (const self_point of self_points) {
+		for (const target_point of target_points) {
+			const pathCandidate = canvas.grid.measurePath([self_point, target_point]);
 			// discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid.
 			if (game.settings.get('f2e-grid-enhancements', 'reach-exception') && canvas.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(canvas.grid.diagonals)
 				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1 && canvas.grid.distance === 5 && canvas.grid.units === 'ft') {
 				pathCandidate.distance -= canvas.grid.distance;
 			}
-			// aura radius check here to skip some collision checks
-			if (opts?.aura_radius ?? Infinity >= pathCandidate.distance) {
-				candidates.push({
-					origin: origin,
-					destination: destination,
-					distance: pathCandidate.distance
-				});
+			if (pathCandidate.distance < distance) {
+				distance = pathCandidate.distance;
 			}
 		}
 	}
-	candidates.sort((a, b) => a.distance - b.distance);
-	for (const candidate of candidates) {
-		if (opts?.collision_types === undefined || closest_surface_wall_collision(candidate.origin, candidate.destination, opts) === null) {
-			return Math.max(0, Math.round(candidate.distance * 10) / 10);
-		}
-	}
-	return Infinity;
+	// round distance to nearest tenth
+	return Math.max(0, Math.round(distance * 10) / 10);
 }
 
 export function Token_object__onClickLeft2(wrapped, self, event) {
@@ -279,7 +448,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		self.border.visible = false;
 		return;
 	}
-	// clear inital border
+	// clear initial border
 	if (self.border.geometry.graphicsData.length > 0 && (self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height)) {
 		self.border_shape = self.token.document.shape
 		self.border_width = self.token.document.width
@@ -342,20 +511,32 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	if (token === self.token) {
 		return true;
 	}
-	// decide what collision types to test against quick survey and I think using || when visual and auditory is set is RAI but could be convinced to make that optional
-	const collisions = [];
+	// ensure that token is within range
+	if (self.token.object.distanceTo(token.object) > self.radius) {
+		return false;
+	}
+	// decide what collision types to test against
+	const collision_types = [];
 	if (self.traits.includes('auditory')) {
-		collisions.push('sound');
+		collision_types.push('sound');
 	}
 	if (self.traits.includes('visual')) {
-		collisions.push('sight');
+		collision_types.push('sight');
 	}
 	if (!self.traits.includes('auditory') && !self.traits.includes('visual')) {
-		collisions.push('move');
+		collision_types.push('move');
 	}
-	// use custom distance to when checking if token is within aura
-	if (self.token.object.distanceTo(token.object, {collision_types: collisions, aura_radius: self.radius / 5 * self.token.scene.grid.distance}) !== Infinity) {
-		return true;
+	// do center point to shell tests for line of effect
+	const scene = self.token.object.scene;
+	const source_token_center_point = generate_center_point(self.token.object);
+	const target_token_center_point = generate_center_point(token.object);
+	const target_token_shell_points = constrain_shell_points(cull_shell_points(generate_shell_points(token.object), target_token_center_point, source_token_center_point), target_token_center_point, collision_types, scene);
+	for (const target_token_shell_point of randomize_shell_points(target_token_shell_points)) {
+		for (const collision_type of collision_types) {
+			if (!any_surface_wall_collision(source_token_center_point, target_token_shell_point, collision_type, scene)) {
+				return true;
+			}
+		}
 	}
 	return false;
 }
