@@ -51,19 +51,18 @@ function generate_center_point(token_object) {
 	return center_point;
 }
 
-function generate_shell_points(token_object, high_resolution=false) {
+function generate_shell_points(token_object) {
 	if (canvas.grid.isGridless) {
 		const shell_points = [];
-		const resolution = high_resolution ? 4 : 2;
-		let width = Math.round(token_object.document.width * resolution) / resolution;
-		let height = Math.round(token_object.document.height * resolution) / resolution;
-		let depth = Math.round(token_object.document.depth * resolution) / resolution;
+		let width = Math.round(token_object.document.width * 2) / 2;
+		let height = Math.round(token_object.document.height * 2) / 2;
+		let depth = Math.round(token_object.document.depth * 2) / 2;
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token_object.document.shape)) {
 			width = width / 2;
 			height = height / 2;
 			depth = depth / 2;
 			// TODO check this generates a similar number of point to rectangle and adjust key resolution points 2 and high resolution
-			const shell_resolution = 1 / Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 2 * resolution) + 2));
+			const shell_resolution = 1 / Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 2 * 2) + 2));
 			for (let polar = 0; polar <= 1; polar += shell_resolution) {
 				for (let azimuth = 0; azimuth <= 2; azimuth += shell_resolution) {
 					shell_points.push({
@@ -74,7 +73,7 @@ function generate_shell_points(token_object, high_resolution=false) {
 				}
 			}
 		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(token_object.document.shape)) {
-			const shell_resolution = 1 / resolution;
+			const shell_resolution = 1 / 2;
 			for (let x = 0; x <= width; x += shell_resolution) {
 				for (let y = 0; y <= height; y += shell_resolution) {
 					for (let z = 0; z <= depth; z += shell_resolution) {
@@ -163,29 +162,27 @@ function generate_shell_points(token_object, high_resolution=false) {
 				elevation: bottom
 			});
 			for (const adjacent_offset of canvas.grid.getAdjacentOffsets(offset)) {
-				if (offset.k === adjacent_offset.k) {
-					const adjacent_point = canvas.grid.getCenterPoint(adjacent_offset);
-					push({
-						x: (point.x * 3 + adjacent_point.x) / 4,
-						y: (point.y * 3 + adjacent_point.y) / 4,
-						elevation: top
-					});
-					push({
-						x: (point.x * 3 + adjacent_point.x) / 4,
-						y: (point.y * 3 + adjacent_point.y) / 4,
-						elevation: bottom
-					});
-					push({
-						x: (point.x + adjacent_point.x) / 2,
-						y: (point.y + adjacent_point.y) / 2,
-						elevation: top
-					});
-					push({
-						x: (point.x + adjacent_point.x) / 2,
-						y: (point.y + adjacent_point.y) / 2,
-						elevation: bottom
-					});
-				}
+				const adjacent_point = canvas.grid.getCenterPoint(adjacent_offset);
+				push({
+					x: (point.x * 3 + adjacent_point.x) / 4,
+					y: (point.y * 3 + adjacent_point.y) / 4,
+					elevation: top
+				});
+				push({
+					x: (point.x * 3 + adjacent_point.x) / 4,
+					y: (point.y * 3 + adjacent_point.y) / 4,
+					elevation: bottom
+				});
+				push({
+					x: (point.x + adjacent_point.x) / 2,
+					y: (point.y + adjacent_point.y) / 2,
+					elevation: top
+				});
+				push({
+					x: (point.x + adjacent_point.x) / 2,
+					y: (point.y + adjacent_point.y) / 2,
+					elevation: bottom
+				});
 			}
 			for (const grid_point of canvas.grid.getVertices(offset)) {
 				push({
@@ -296,7 +293,7 @@ function randomize_shell_points(shell_points) {
 
 function token_points(token_object) {
 	if (canvas.grid.isGridless) {
-		return  generate_shell_points(token_object, true);
+		return  generate_shell_points(token_object);
 	}
 	return getOccupiedGridSpaceOffsets(token_object.document).map((offset) => {return token_object.scene.grid.getCenterPoint(offset)});
 }
@@ -305,11 +302,11 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	// if target is self distance will always be 0
 	if (self === target) return 0;
 	// calculate self points
-	const self_points = token_points(self, opts);
+	const self_points = token_points(self);
 	// calculate target points
 	let target_points = []
 	if (target instanceof CONFIG.Token.objectClass) {
-		target_points = token_points(target, opts);
+		target_points = token_points(target);
 	} else {
 		const target_point = canvas.grid.getCenterPoint({x: target.x, y: target.y})
 		target_points = [{x: target_point.x, y: target_point.y, elevation: target?.elevation ?? self.document.elevation}];

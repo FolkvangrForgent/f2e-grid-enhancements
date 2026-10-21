@@ -8,7 +8,6 @@ CONFIG.F2e = {
 		document: CONFIG.Scene.documentClass.prototype,
 	},
 	Region: {
-		layer: CONFIG.Canvas.layers.regions.layerClass.prototype,
 		object: CONFIG.Region.objectClass.prototype,
 		layerFoundry: foundry.canvas.layers.RegionLayer.prototype,
 	}
@@ -24,7 +23,11 @@ function patch_function(target_function_name) {
 			return wrapped(...args);
 		}
 	}, 'MIXED');
-	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched');
+	if (grid[base] !== undefined) {
+		console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched');
+	} else {
+		console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' unpatched');
+	}
 }
 
 async function review() {
