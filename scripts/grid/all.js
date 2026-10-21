@@ -47,7 +47,7 @@ function getOccupiedGridSpaceOffsets(self, flat=false) {
 function generate_center_point(token_object) {
 	// get center point and add elevation to make a ElevatedPoint that is in the exact center of the token
 	const center_point = token_object.getCenterPoint();
-	center_point.elevation = token_object.document.elevation + token_object.document.depth / 2;
+	center_point.elevation = token_object.document.elevation + token_object.document.depth / 2 * token_object.document.scene.grid.distance;
 	return center_point;
 }
 
@@ -55,10 +55,13 @@ function generate_shell_points(token_object, high_resolution=false) {
 	if (canvas.grid.isGridless) {
 		const shell_points = [];
 		const resolution = high_resolution ? 4 : 2;
-		const width = Math.round(token_object.document.width * resolution) / resolution;
-		const height = Math.round(token_object.document.height * resolution) / resolution;
-		const depth = Math.round(token_object.document.depth * resolution) / resolution;
+		let width = Math.round(token_object.document.width * resolution) / resolution;
+		let height = Math.round(token_object.document.height * resolution) / resolution;
+		let depth = Math.round(token_object.document.depth * resolution) / resolution;
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token_object.document.shape)) {
+			width = width / 2;
+			height = height / 2;
+			depth = depth / 2;
 			// TODO check this generates a similar number of point to rectangle and adjust key resolution points 2 and high resolution
 			const shell_resolution = 1 / Math.max(4, Math.round(Math.sqrt(((width + height + depth) / 3) * 2 * resolution) + 2));
 			for (let polar = 0; polar <= 1; polar += shell_resolution) {
@@ -66,7 +69,7 @@ function generate_shell_points(token_object, high_resolution=false) {
 					shell_points.push({
 						x: token_object.document.x + (width + width * Math.sin(polar * Math.PI) * Math.cos(azimuth * Math.PI)) * token_object.document.scene.grid.size,
 						y: token_object.document.y + (height + height * Math.sin(polar * Math.PI) * Math.sin(azimuth * Math.PI)) * token_object.document.scene.grid.size,
-						elevation: token_object.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * token_object.document.scene.grid.size
+						elevation: token_object.document.elevation + (depth + depth * Math.cos(polar * Math.PI)) * token_object.document.scene.grid.distance
 					});
 				}
 			}
@@ -111,13 +114,18 @@ function generate_shell_points(token_object, high_resolution=false) {
 		}
 		return shell_points;
 	} else if (canvas.grid.isHexagonal) {
-		// use set to deduplicate
-		const shell_points = new Set();
+		// use map to deduplicate
+		const shell_points = new Map();
+		const push = (point) => {
+			const key = `${Math.round(point.x * 100)}|${Math.round(point.y * 100)}|${Math.round(point.elevation * 100)}`;
+			shell_points.set(key, {x: point.x, y: point.y, elevation: point.elevation});
+		};
 		// generate column of shape using getShape
 		const token_shape = token_object.getShape();
 		const depth = Math.round(token_object.document.depth * 2) / 2;
 		for (let z = 0; z <= depth; z += 0.5) {
 			const elevation = token_object.document.elevation + z * token_object.document.scene.grid.distance;
+			let first_point = null;
 			let previous_point = null;
 			for (let index = 0; index < token_shape.points.length; index += 2) {
 				const point = {
@@ -125,9 +133,10 @@ function generate_shell_points(token_object, high_resolution=false) {
 					y: token_shape.points[index + 1] + token_object.y,
 					elevation: elevation
 				};
-				shell_points.add(point);
+				push(point);
+				if (first_point === null) first_point = point;
 				if (previous_point !== null) {
-					shell_points.add({
+					push({
 						x: (point.x + previous_point.x) / 2,
 						y: (point.y + previous_point.y) / 2,
 						elevation: elevation
@@ -135,17 +144,20 @@ function generate_shell_points(token_object, high_resolution=false) {
 				}
 				previous_point = point;
 			}
+			if (previous_point !== null && first_point !== null) {
+				push({x: (previous_point.x + first_point.x) / 2, y: (previous_point.y + first_point.y) / 2, elevation});
+			}
 		}
 		const top = token_object.document.elevation + depth * token_object.document.scene.grid.distance;
-		const bottom = token_object.document.scene.grid.distance;
+		const bottom = token_object.document.elevation;
 		for (const offset of getOccupiedGridSpaceOffsets(token_object.document, true)) {
 			const point = canvas.grid.getCenterPoint(offset);
-			shell_points.add({
+			push({
 				x: point.x,
 				y: point.y,
 				elevation: top
 			});
-			shell_points.add({
+			push({
 				x: point.x,
 				y: point.y,
 				elevation: bottom
@@ -153,22 +165,22 @@ function generate_shell_points(token_object, high_resolution=false) {
 			for (const adjacent_offset of canvas.grid.getAdjacentOffsets(offset)) {
 				if (offset.k === adjacent_offset.k) {
 					const adjacent_point = canvas.grid.getCenterPoint(adjacent_offset);
-					shell_points.add({
+					push({
 						x: (point.x * 3 + adjacent_point.x) / 4,
 						y: (point.y * 3 + adjacent_point.y) / 4,
 						elevation: top
 					});
-					shell_points.add({
+					push({
 						x: (point.x * 3 + adjacent_point.x) / 4,
 						y: (point.y * 3 + adjacent_point.y) / 4,
 						elevation: bottom
 					});
-					shell_points.add({
+					push({
 						x: (point.x + adjacent_point.x) / 2,
 						y: (point.y + adjacent_point.y) / 2,
 						elevation: top
 					});
-					shell_points.add({
+					push({
 						x: (point.x + adjacent_point.x) / 2,
 						y: (point.y + adjacent_point.y) / 2,
 						elevation: bottom
@@ -176,19 +188,19 @@ function generate_shell_points(token_object, high_resolution=false) {
 				}
 			}
 			for (const grid_point of canvas.grid.getVertices(offset)) {
-				shell_points.add({
+				push({
 					x: grid_point.x,
 					y: grid_point.y,
 					elevation: top
 				});
-				shell_points.add({
+				push({
 					x: grid_point.x,
 					y: grid_point.y,
 					elevation: bottom
 				});
 			}
 		}
-		return Array.from(shell_points);
+		return Array.from(shell_points.values());
 	}
 	return [];
 }
@@ -258,25 +270,18 @@ function any_surface_wall_collision(origin, destination, collision_type, scene) 
 	return false;
 }
 
-function constrain_shell_points(shell_points, center_point, collision_types, scene) {
-	return shell_points.map((shell_point) => {
-		for (const collision_type of collision_types) {
-			const collision = closest_surface_wall_collision(center_point, shell_point, collision_type, scene);
-			if (collision !== null) {
-				return {
-					x: collision.x + (center_point.x - collision.x) * 0.1,
-					y: collision.y + (center_point.y - collision.y) * 0.1,
-					elevation: collision.elevation + (center_point.elevation - collision.elevation) * 0.1
-				};
-			}
-			return shell_point;
+function constrain_shell_point(shell_point, center_point, collision_types, scene) {
+	for (const collision_type of collision_types) {
+		const collision = closest_surface_wall_collision(center_point, shell_point, collision_type, scene);
+		if (collision !== null) {
+			return {
+				x: collision.x + (center_point.x - collision.x) * 0.1,
+				y: collision.y + (center_point.y - collision.y) * 0.1,
+				elevation: collision.elevation + (center_point.elevation - collision.elevation) * 0.1
+			};
 		}
-	});
-}
-
-// TODO optimization?
-function cull_shell_points(shell_points, center_point, destination_point) {
-	return shell_points;
+	}
+	return shell_point;
 }
 
 function randomize_shell_points(shell_points) {
@@ -306,16 +311,20 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	if (target instanceof CONFIG.Token.objectClass) {
 		target_points = token_points(target, opts);
 	} else {
-		target_points = [canvas.grid.getCenterPoint({x: target.x, y: target.y, elevation: target?.elevation ?? self.document.elevation})];
+		const target_point = canvas.grid.getCenterPoint({x: target.x, y: target.y})
+		target_points = [{x: target_point.x, y: target_point.y, elevation: target?.elevation ?? self.document.elevation}];
+	}
+	// determine if we should discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid
+	let discount = false;
+	if (game.settings.get('f2e-grid-enhancements', 'reach-exception') && canvas.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(canvas.grid.diagonals) && opts?.reach === 10  && canvas.grid.distance === 5 && canvas.grid.units === 'ft') {
+		discount = true;
 	}
 	// calculate distance
 	let distance = Infinity;
 	for (const self_point of self_points) {
 		for (const target_point of target_points) {
 			const pathCandidate = canvas.grid.measurePath([self_point, target_point]);
-			// discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid.
-			if (game.settings.get('f2e-grid-enhancements', 'reach-exception') && canvas.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(canvas.grid.diagonals)
-				&& opts?.reach === 10 && pathCandidate.segments[0].diagonals > 1 && canvas.grid.distance === 5 && canvas.grid.units === 'ft') {
+			if (discount && pathCandidate.segments[0].diagonals > 1) {
 				pathCandidate.distance -= canvas.grid.distance;
 			}
 			if (pathCandidate.distance < distance) {
@@ -340,7 +349,7 @@ export function Token_object__onClickLeft2(wrapped, self, event) {
 			const thisIsCreature = self.actor.isOfType('creature');
 			const name = self.document.playersCanSeeName
 				? self.document.name
-				: _loc(`PF2E.Token.Mystified.The${thisIsCreature ? 'Creature' : 'Object'}`);
+				: game.i18n.localize(`PF2E.Token.Mystified.The${thisIsCreature ? 'Creature' : 'Object'}`);
 			ui.notifications.warn('PF2E.Token.OutOfReach', { format: { token: name } });
 			return;
 		}
@@ -361,7 +370,7 @@ export function Region_object_snappingMode(wrapped, self){
 		case 'line':
 			return CONST.GRID_SNAPPING_MODES.EDGE_MIDPOINT | CONST.GRID_SNAPPING_MODES.CORNER;
 		default:
-			return 0;
+			return wrapped();
 	}
 }
 
@@ -379,7 +388,7 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 			if (placement.aiming && (shape.type === 'cone' || shape.type === 'line')) {
 				const rotation_angle = shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
 				const angle = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
-				const snapped = event.ctrlKey || event.metaKey || canvas?.grid?.isGridless ? angle : angle.toNearest(rotation_angle);
+				const snapped = event.ctrlKey || event.metaKey || rotation_angle === 0 ? angle : angle.toNearest(rotation_angle);
 				shape.updateSource({ rotation: snapped });
 				return false;
 			}
@@ -393,7 +402,7 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 		options.onRotate = ({ event, shape }) => {
 			if (shape.type === 'cone' || shape.type === 'line') {
 				const rotation_angle = shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
-				const step = event.ctrlKey || event.metaKey ? 5 : rotation_angle;
+				const step = event.ctrlKey || event.metaKey  || rotation_angle === 0 ? 5 : rotation_angle;
 				const delta = step * Math.sign(event.deltaY);
 				const rotation = shape.rotation + delta;
 				shape.updateSource({ rotation: event.ctrlKey || event.metaKey ? rotation : rotation.toNearest(step) });
@@ -422,13 +431,13 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 
 export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 	wrapped(event);
-	if (event.interactionData.shape.type === 'circle' && game.activeTool === 'point') {
+	if (event.interactionData.shape?.type === 'circle' && ui.controls.tool?.name === 'point') {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
-	} else if (self.templateMode && (event.interactionData.shape.type === 'line' || event.interactionData.shape.type === 'cone')) {
+	} else if (self.templateMode && (event.interactionData.shape?.type === 'line' || event.interactionData.shape?.type === 'cone')) {
 		const rotation_angle = event.interactionData.shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
 		const rotation = event.interactionData.shape.rotation.toNearest(rotation_angle);
-		if (rotation !== event.interactionData.shape.rotation) {
+		if (rotation_angle > 0 && rotation !== event.interactionData.shape.rotation) {
 			event.interactionData.shape.updateSource({rotation});
 			self._updateDragPreview(event);
 		}
@@ -449,16 +458,18 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		return;
 	}
 	// clear initial border
-	if (self.border.geometry.graphicsData.length > 0 && (self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height)) {
+	if ((self.radius !== self.border_radius || self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height)) {
+		self.border_radius = self.radius
 		self.border_shape = self.token.document.shape
 		self.border_width = self.token.document.width
 		self.border_height = self.token.document.height
 		self.border.clear();
 	}
 	// Create aura border (token base type and polygon type didn't work for some reason)
-	if (self.border.geometry.graphicsData.length === 0) {
+	if (self.border.geometry.graphicsData.length === 0 && self.appearance.border?.color != null && self.appearance.border?.alpha != null) {
+		let polygon = null;
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
-			const aura_shape = new foundry.data.EmanationShapeData({
+			polygon = new foundry.data.EmanationShapeData({
 				type: 'emanation',
 				base: {
 					type: 'ellipse',
@@ -469,12 +480,9 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 				},
 				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
 				gridBased: false
-			});
-			if (self.appearance.border?.color !== null && self.appearance.border?.alpha !== null) {
-				self.border.lineStyle(canvas.grid.thickness * 2, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(aura_shape.polygons[0]);
-			}
+			}).polygons[0];
 		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape)) {
-			const aura_shape = new foundry.data.EmanationShapeData({
+			polygon = new foundry.data.EmanationShapeData({
 				type: 'emanation',
 				base: {
 					type: 'rectangle',
@@ -485,13 +493,13 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 				},
 				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
 				gridBased: false
-			});
-			if (self.appearance.border?.color !== null && self.appearance.border?.alpha !== null) {
-				self.border.lineStyle(canvas.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(aura_shape.polygons[0]);
-			}
+			}).polygons[0];
 		} else {
 			// TODO support hex grid with polygons shape?
 			return;
+		}
+		if (polygon != null) {
+			self.border.lineStyle(canvas.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(polygon);
 		}
 	}
 	// shift aura into the correct position here (fixes hover ghost)
@@ -530,10 +538,10 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	const scene = self.token.object.scene;
 	const source_token_center_point = generate_center_point(self.token.object);
 	const target_token_center_point = generate_center_point(token.object);
-	const target_token_shell_points = constrain_shell_points(cull_shell_points(generate_shell_points(token.object), target_token_center_point, source_token_center_point), target_token_center_point, collision_types, scene);
+	const target_token_shell_points = generate_shell_points(token.object);
 	for (const target_token_shell_point of randomize_shell_points(target_token_shell_points)) {
 		for (const collision_type of collision_types) {
-			if (!any_surface_wall_collision(source_token_center_point, target_token_shell_point, collision_type, scene)) {
+			if (!any_surface_wall_collision(source_token_center_point, constrain_shell_point(target_token_shell_point, target_token_center_point, collision_types, scene), collision_type, scene)) {
 				return true;
 			}
 		}
@@ -548,18 +556,18 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	// flanker data
 	const flanker_x = flanker.document.center.x / flanker.document.scene.grid.size
 	const flanker_y = flanker.document.center.y / flanker.document.scene.grid.size
-	const flanker_z = flanker.document.elevation + flanker.document.depth / 2
+	const flanker_z = flanker.document.elevation / flanker.document.scene.grid.distance + flanker.document.depth / 2
 	// other data
 	const other_x = other.document.center.x / other.document.scene.grid.size
 	const other_y = other.document.center.y / other.document.scene.grid.size
-	const other_z = other.document.elevation + other.document.depth / 2
+	const other_z = other.document.elevation / other.document.scene.grid.distance  + other.document.depth / 2
 	// flankee
 	const flankee_height = flankee.document.height / 2
 	const flankee_width = flankee.document.width / 2
 	const flankee_depth = flankee.document.depth / 2
 	const flankee_x = flankee.document.center.x / flankee.document.scene.grid.size
 	const flankee_y = flankee.document.center.y / flankee.document.scene.grid.size
-	const flankee_z = flankee.document.elevation + flankee_depth
+	const flankee_z = flankee.document.elevation / flankee.document.scene.grid.distance + flankee_depth
 	// derived numbers
 	const x0 = flanker_x - flankee_x
 	const x1 = other_x - flanker_x
@@ -579,10 +587,10 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	const t1 = (-B - Math.sqrt(B * B - 4 * A * C)) / (2 * A)
 	// points
 	const points = [];
-	if (t0 !== NaN) {
+	if (Number.isNaN(t0)) {
 		points.push({x: flanker_x + t0 * x1, y: flanker_y + t0 * y1, z: flanker_z + t0 * z1})
 	}
-	if (t1 !== NaN && t0 !== t1) {
+	if (Number.isNaN(t1) && t0 !== t1) {
 		points.push({x: flanker_x + t1 * x1, y: flanker_y + t1 * y1, z: flanker_z + t1 * z1})
 	}
 	for (const point of points) {

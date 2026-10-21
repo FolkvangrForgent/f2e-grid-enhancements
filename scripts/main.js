@@ -68,9 +68,8 @@ function patch_function(target_function_name) {
 async function review() {
 	if (game?.scenes?.active !== undefined) {
 		try {
-			await game.scenes.active.unview();
-			await game.scenes.active.view();
-		} catch (e) {}
+			await canvas.draw(canvas.scene);
+		} catch {}
 	}
 }
 
@@ -85,6 +84,8 @@ Hooks.once('libWrapper.Ready', () => {
 	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
 	// [ hex & square & gridless ] Custom flanking
 	patch_function('CONFIG.F2e.Token.object.onOppositeSides');
+	// [ hex & square & gridless ] Custom Reach enforcement support
+	patch_function('CONFIG.F2e.Token.object._onClickLeft2')
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
@@ -103,7 +104,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.hex-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
+		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 60
 	});
 	game.settings.register('f2e-grid-enhancements', 'square-cone-template-angle', {
@@ -111,7 +112,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.square-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
+		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'gridless-cone-template-angle', {
@@ -119,7 +120,7 @@ Hooks.once('init', () => {
 		hint: 'f2e-grid-enhancements.setting.gridless-cone-template-angle-hint',
 		scope: 'world',
 		config: true,
-		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
+		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-snapping-angle', {
@@ -203,13 +204,13 @@ Hooks.once('init', () => {
 		type: new foundry.data.fields.BooleanField(),
 		default: true
 	});
-	// setup default grid
-	game.system.grid = {type: game.settings.get('f2e-grid-enhancements', 'default-grid-type'), distance: 5, units: 'ft', diagonals: 4}
+	// setup default grid type
+	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type')
 });
 
 
 
-// Custom template controls (requires CONFIG.F2e.MeasuredTemplate.layer._onDragLeftStart patch to function properly)
+// Custom template controls
 Hooks.on('getSceneControlButtons', (controls) => {
 	// ensure canvas is ready and controls contain regions
 	if (!canvas?.ready || !controls?.regions?.tools?.cone?.shapeData) {
@@ -226,9 +227,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
 		} else {
 			controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
 		}
-	} catch {
-		controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
-	}
+	} catch { }
 	controls.regions.tools.point = {
 		name: 'point',
 		order: 8,
@@ -259,16 +258,18 @@ const aura_patcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 	patch_function('CONFIG.F2e.Aura.renderer.draw');
 	// [ hex & square & gridless ] Aura contain token
 	patch_function('CONFIG.F2e.Aura.token.containsToken');
-	// [ hex & gridless ] Aura enable
+	// [ hex & square & gridless ] Aura enable
 	patch_function('CONFIG.F2e.Scene.document.canHaveAuras');
+	// Fix for stale auras after wrapping functions
+	review();
 }, 100);
 
 const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
-	if (token.auras.size > 0) {
-		const AuraRenderer = Object.getPrototypeOf(token.auras.entries().next().value[1])
-		const TokenAura = Object.getPrototypeOf(token.document.auras.entries().next().value[1])
-		if (AuraRenderer && TokenAura) {
-			aura_patcher(AuraRenderer, TokenAura);
+	if (token.auras?.size > 0) {
+		const aura = token.auras?.values().next().value;
+		const document_aura = token.document.auras?.values().next().value;
+		if (aura && document_aura) {
+			aura_patcher(Object.getPrototypeOf(aura), Object.getPrototypeOf(document_aura));
 			Hooks.off('refreshToken', aura_finding_hook);
 		}
 	} else {
