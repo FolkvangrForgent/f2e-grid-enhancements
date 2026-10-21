@@ -1,23 +1,54 @@
-export function Aura_renderer_draw(wrapped, self, showBorder) {
-	self.border.visible = false;
-}
-
 export function Aura_renderer_highlight(wrapped, self) {
-	if (([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) || ([CONST.TOKEN_SHAPES.TRAPEZOID_1, CONST.TOKEN_SHAPES.TRAPEZOID_2, CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape) && self.token.document.width <= 2 && self.token.document.height <= 2)) {
-		const aura_shape = [CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.TRAPEZOID_1, CONST.TOKEN_SHAPES.RECTANGLE_1].includes(self.token.document.shape) ? CONST.TOKEN_SHAPES.ELLIPSE_1 : CONST.TOKEN_SHAPES.ELLIPSE_2;
-		const aura_radius = (self.radius / self.token.document.scene.grid.distance);
-		const aura_offsets = self.token.document.getOccupiedGridSpaceOffsets({x: self.token.document.x - (self.token.document.scene.grid.columns ? Math.SQRT3 / 2 : 1) * self.token.document.scene.grid.size * aura_radius, y: self.token.document.y - (self.token.document.scene.grid.columns ? 1 : Math.SQRT3 / 2) * self.token.document.scene.grid.size * aura_radius, width: (self.token.document.width < 1 ? 1 : self.token.document.width) + aura_radius * 2, height: (self.token.document.height < 1 ? 1 : self.token.document.height) + aura_radius * 2, shape: aura_shape});
-		for (const aura_offset of aura_offsets) {
-			const aura_point = self.token.document.scene.grid.getTopLeftPoint(aura_offset)
-			canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
-				x: aura_point.x,
-				y: aura_point.y,
-				border: self.appearance.border?.color,
-				color: self.appearance.highlight.color,
-				alpha: self.appearance.highlight.alpha,
-			});
+	// map for deduplication
+	const offsets = new Map();
+	// outer offsets to only expand outer points
+	let outer_offsets = [];
+	// heavily modified logic from getOccupiedGridSpaceOffsets
+	const token_document_offsets = [];
+	const {i: i0, j: j0} = self.token.document._positionToGridOffset();
+	const width = Math.max(Math.round(self.token.document.width * 2) / 2, 0.5);
+	const height = Math.max(Math.round(self.token.document.height * 2) / 2, 0.5);
+	const tokenHexagonalOffsetsData = foundry.documents.BaseToken._getHexagonalOffsets(width, height, self.token.document.shape, self.token.document.scene.grid.columns);
+	const isEven = ((self.token.document.scene.grid.columns ? j0 : i0) % 2 === 0) === self.token.document.scene.grid.even;
+	for ( const {i: di, j: dj} of (isEven ? tokenHexagonalOffsetsData.even : tokenHexagonalOffsetsData.odd) ) {
+		token_document_offsets.push({i: i0 + di, j: j0 + dj});
+	}
+	// add occupied offsets
+	for (const offset of token_document_offsets) {
+		const key = `${offset.i},${offset.j}`;
+		if (!offsets.has(key)) {
+			offsets.set(key, offset);
+			outer_offsets.push(offset);
 		}
-	} else if ([CONST.TOKEN_SHAPES.TRAPEZOID_1, CONST.TOKEN_SHAPES.TRAPEZOID_2, CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape)) {
-		// TODO support all hex shapes visually
+	}
+	// grow offsets
+	const steps = Math.round(self.radius / self.token.document.scene.grid.distance);
+	for (let step = 0; step < steps && outer_offsets.length; step++) {
+		let new_outer_offsets = [];
+		for (const outer_offset of outer_offsets) {
+			for (const offset of self.token.document.scene.grid.getAdjacentOffsets(outer_offset)) {
+				const key = `${offset.i},${offset.j}`;
+				if (!offsets.has(key)) {
+					offsets.set(key, offset);
+					new_outer_offsets.push(offset);
+				}
+			}
+		}
+		outer_offsets = new_outer_offsets;
+	}
+	// remove occupied offsets
+	for (const offset of token_document_offsets) {
+		offsets.delete(`${offset.i},${offset.j}`);
+	}
+	// highlight
+	for (const offset of offsets.values()) {
+		const point = self.token.document.scene.grid.getTopLeftPoint(offset);
+		canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
+			x: point.x,
+			y: point.y,
+			border: self.appearance.border?.color,
+			color: self.appearance.highlight.color,
+			alpha: self.appearance.highlight.alpha,
+		});
 	}
 }

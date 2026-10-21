@@ -53,7 +53,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - Reach enforcement support
 - Aura
     - Support aura via extending system implementation
-        - Trapezoid or Rectangle token shapes larger than 2x2 are not currently supported visually but will otherwise work
 
 
 ### Square Improvements

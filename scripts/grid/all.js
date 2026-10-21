@@ -1,4 +1,4 @@
-// yet another function I have to copy and modify from foundryvtt core
+// modified version of getOccupiedGridSpaceOffsets from core
 function getOccupiedGridSpaceOffsets(self, flat=false) {
 	const offsets = [];
 	const grid = self.parent?.grid ?? foundry.documents.BaseScene.defaultGrid;
@@ -16,7 +16,7 @@ function getOccupiedGridSpaceOffsets(self, flat=false) {
 		for ( let i = i0; i < i1; i++ ) {
 			for ( let j = j0; j < j1; j++ ) {
 				if (flat) {
-					offsets.push({i, j, k: 0});
+					offsets.push({i, j});
 				} else {
 					for ( let k = k0; k < k1; k++ ) {
 						const offset = {i, j, k};
@@ -32,7 +32,7 @@ function getOccupiedGridSpaceOffsets(self, flat=false) {
 		const isEven = ((grid.columns ? j0 : i0) % 2 === 0) === grid.even;
 		for ( const {i: di, j: dj} of (isEven ? offsetsEven : offsetsOdd) ) {
 			if (flat) {
-				offsets.push({i: i0 + di, j: j0 + dj, k: 0});
+				offsets.push({i: i0 + di, j: j0 + dj});
 			} else {
 				for ( let k = k0; k < k1; k++ ) {
 					const offset = {i: i0 + di, j: j0 + dj, k};
@@ -129,8 +129,8 @@ function generate_shell_points(token_object, high_resolution=false) {
 			let previous_point = null;
 			for (let index = 0; index < token_shape.points.length; index += 2) {
 				const point = {
-					x: token_shape.points[index] + token_object.x,
-					y: token_shape.points[index + 1] + token_object.y,
+					x: token_shape.points[index] + token_object.document.x,
+					y: token_shape.points[index + 1] + token_object.document.y,
 					elevation: elevation
 				};
 				push(point);
@@ -468,7 +468,75 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 	// Create aura border (token base type and polygon type didn't work for some reason)
 	if (self.border.geometry.graphicsData.length === 0 && self.appearance.border?.color != null && self.appearance.border?.alpha != null) {
 		let polygon = null;
-		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
+		if (canvas.grid.isHexagonal) {
+			// map for deduplication
+			const offsets = new Map();
+			// outer offsets to only expand outer points
+			let outer_offsets = [];
+			// heavily modified logic from getOccupiedGridSpaceOffsets
+			const token_document_offsets = [];
+			const {i: i0, j: j0} = self.token.document._positionToGridOffset();
+			const width = Math.max(Math.round(self.token.document.width * 2) / 2, 0.5);
+			const height = Math.max(Math.round(self.token.document.height * 2) / 2, 0.5);
+			const tokenHexagonalOffsetsData = foundry.documents.BaseToken._getHexagonalOffsets(width, height, self.token.document.shape, self.token.document.scene.grid.columns);
+			const isEven = ((self.token.document.scene.grid.columns ? j0 : i0) % 2 === 0) === self.token.document.scene.grid.even;
+			for ( const {i: di, j: dj} of (isEven ? tokenHexagonalOffsetsData.even : tokenHexagonalOffsetsData.odd) ) {
+				token_document_offsets.push({i: i0 + di, j: j0 + dj});
+			}
+			// add occupied offsets
+			for (const offset of token_document_offsets) {
+				const key = `${offset.i},${offset.j}`;
+				if (!offsets.has(key)) {
+					offsets.set(key, offset);
+					outer_offsets.push(offset);
+				}
+			}
+			// grow offsets
+			const steps = Math.round(self.radius / self.token.document.scene.grid.distance);
+			for (let step = 0; step < steps && outer_offsets.length; step++) {
+				let new_outer_offsets = [];
+				for (const outer_offset of outer_offsets) {
+					for (const offset of self.token.document.scene.grid.getAdjacentOffsets(outer_offset)) {
+						const key = `${offset.i},${offset.j}`;
+						if (!offsets.has(key)) {
+							offsets.set(key, offset);
+							new_outer_offsets.push(offset);
+						}
+					}
+				}
+				outer_offsets = new_outer_offsets;
+			}
+			// convert offsets to edges removing overlapping
+			const edges = new Map();
+			for (const offset of offsets.values()) {
+				const vertices = self.token.document.scene.grid.getVertices(offset);
+				for (let index = 0; index < vertices.length; index++) {
+					const p0 = vertices[index];
+					const s0 = `${Math.round(p0.x * 100)},${Math.round(p0.y * 100)}`;
+					const p1 = vertices[(index + 1) % vertices.length];
+					const s1 = `${Math.round(p1.x * 100)},${Math.round(p1.y * 100)}`;
+					if (edges.delete(`${s1}>${s0}`)) continue;
+					edges.set(`${s0}>${s1}`, {p0, s0, s1});
+				}
+			}
+			// sort edges only by start now that removal is done
+			const edges_by_start = new Map();
+			for (const edge of edges.values()) {
+				edges_by_start.set(edge.s0, edge);
+			}
+			// walk the edges to create a polygon
+			const center_x = self.token.document.x + self.token.mechanicalBounds.width / 2;
+			const center_y = self.token.document.y + self.token.mechanicalBounds.height / 2;
+			const points = [];
+			let edge = edges_by_start.values().next().value;
+			while (edge) {
+				edges_by_start.delete(edge.s0);
+				points.push(edge.p0.x - center_x)
+				points.push(edge.p0.y - center_y);
+				edge = edges_by_start.get(edge.s1);
+			}
+			polygon = new PIXI.Polygon(points);
+		} else if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
 			polygon = new foundry.data.EmanationShapeData({
 				type: 'emanation',
 				base: {
@@ -495,7 +563,6 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 				gridBased: false
 			}).polygons[0];
 		} else {
-			// TODO support hex grid with polygons shape?
 			return;
 		}
 		if (polygon != null) {

@@ -13,7 +13,7 @@ CONFIG.F2e = {
 	Region: {
 		layer: CONFIG.Canvas.layers.regions.layerClass.prototype,
 		object: CONFIG.Region.objectClass.prototype,
-		layerFoundry: Object.getPrototypeOf(CONFIG.Canvas.layers.regions.layerClass).prototype,
+		layerFoundry: foundry.canvas.layers.RegionLayer.prototype,
 	}
 }
 
@@ -66,7 +66,7 @@ function patch_function(target_function_name) {
 }
 
 async function review() {
-	if (game?.scenes?.active !== undefined) {
+	if (canvas?.ready && canvas.scene) {
 		try {
 			await canvas.draw(canvas.scene);
 		} catch {}
