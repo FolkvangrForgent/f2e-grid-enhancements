@@ -681,3 +681,95 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	}
 	return false;
 }
+
+export function Aura_renderer_highlight(wrapped, self) {
+	if (self.token.document.scene.grid.isSquare) {
+		return wrapped();
+	} else if (self.token.document.scene.grid.isHexagonal) {
+		// map for deduplication
+		const offsets = new Map();
+		// outer offsets to only expand outer points
+		let outer_offsets = [];
+		// heavily modified logic from getOccupiedGridSpaceOffsets
+		const token_document_offsets = [];
+		const {i: i0, j: j0} = self.token.document._positionToGridOffset();
+		const width = Math.max(Math.round(self.token.document.width * 2) / 2, 0.5);
+		const height = Math.max(Math.round(self.token.document.height * 2) / 2, 0.5);
+		const tokenHexagonalOffsetsData = foundry.documents.BaseToken._getHexagonalOffsets(width, height, self.token.document.shape, self.token.document.scene.grid.columns);
+		const isEven = ((self.token.document.scene.grid.columns ? j0 : i0) % 2 === 0) === self.token.document.scene.grid.even;
+		for ( const {i: di, j: dj} of (isEven ? tokenHexagonalOffsetsData.even : tokenHexagonalOffsetsData.odd) ) {
+			token_document_offsets.push({i: i0 + di, j: j0 + dj});
+		}
+		// add occupied offsets
+		for (const offset of token_document_offsets) {
+			const key = `${offset.i},${offset.j}`;
+			if (!offsets.has(key)) {
+				offsets.set(key, offset);
+				outer_offsets.push(offset);
+			}
+		}
+		// grow offsets
+		const steps = Math.round(self.radius / self.token.document.scene.grid.distance);
+		for (let step = 0; step < steps && outer_offsets.length; step++) {
+			let new_outer_offsets = [];
+			for (const outer_offset of outer_offsets) {
+				for (const offset of self.token.document.scene.grid.getAdjacentOffsets(outer_offset)) {
+					const key = `${offset.i},${offset.j}`;
+					if (!offsets.has(key)) {
+						offsets.set(key, offset);
+						new_outer_offsets.push(offset);
+					}
+				}
+			}
+			outer_offsets = new_outer_offsets;
+		}
+		// remove occupied offsets
+		for (const offset of token_document_offsets) {
+			offsets.delete(`${offset.i},${offset.j}`);
+		}
+		// highlight
+		for (const offset of offsets.values()) {
+			const point = self.token.document.scene.grid.getTopLeftPoint(offset);
+			canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
+				x: point.x,
+				y: point.y,
+				border: self.appearance.border?.color,
+				color: self.appearance.highlight.color,
+				alpha: self.appearance.highlight.alpha,
+			});
+		}
+	} else if (self.token.document.scene.grid.isGridless) {
+		let aura_base;
+		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(self.token.document.shape)) {
+			aura_base = {
+				type: 'ellipse',
+				x: self.token.document.x + self.token.document.width * self.token.document.scene.grid.size / 2,
+				y: self.token.document.y + self.token.document.height * self.token.document.scene.grid.size / 2,
+				radiusX: self.token.document.width / 2 * self.token.document.scene.grid.size,
+				radiusY: self.token.document.height / 2 * self.token.document.scene.grid.size,
+			}
+		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(self.token.document.shape)) {
+			aura_base = {
+				type: 'rectangle',
+				x: self.token.document.x,
+				y: self.token.document.y,
+				width: self.token.document.width * self.token.document.scene.grid.size,
+				height: self.token.document.height * self.token.document.scene.grid.size,
+			}
+		} else {
+			return;
+		}
+		const aura_shape = new foundry.data.EmanationShapeData({
+			type: 'emanation',
+			base: aura_base,
+			radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
+			gridBased: false
+		});
+		const layer = canvas.interface.grid.highlightLayers[self.highlightLayer.name];
+		if ( !layer ) {
+			return;
+		}
+		layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
+		layer.drawShape(aura_shape.polygons[0]).endFill();
+	}
+}

@@ -1,7 +1,4 @@
-import * as all from './grid/all.js';
-import * as hex from './grid/hex.js';
-import * as square from './grid/square.js';
-import * as gridless from './grid/gridless.js';
+import * as grid from './grid.js';
 
 CONFIG.F2e = {
 	Token: {
@@ -21,48 +18,13 @@ function patch_function(target_function_name) {
 	const split = target_function_name.split('.');
 	const base = split[2] + '_' + split[3] + '_' + split[4];
 	libWrapper.register('f2e-grid-enhancements', target_function_name, function(wrapped, ...args) {
-		if (!canvas?.ready || !canvas?.grid) {
+		if (grid[base] !== undefined) {
+			return grid[base](wrapped, this, ...args);
+		} else {
 			return wrapped(...args);
 		}
-		if (canvas.grid.isHexagonal) {
-			if (hex[base] !== undefined) {
-				return hex[base](wrapped, this, ...args);
-			} else {
-				if (all[base] !== undefined) {
-					return all[base](wrapped, this, ...args);
-				} else {
-					return wrapped(...args);
-				}
-			}
-		} else if (canvas.grid.isGridless) {
-			if (gridless[base] !== undefined) {
-				return gridless[base](wrapped, this, ...args);
-			} else {
-				if (all[base] !== undefined) {
-					return all[base](wrapped, this, ...args);
-				} else {
-					return wrapped(...args);
-				}
-			}
-		} else if (canvas.grid.isSquare) {
-			if (square[base] !== undefined) {
-				return square[base](wrapped, this, ...args);
-			} else {
-				if (all[base] !== undefined) {
-					return all[base](wrapped, this, ...args);
-				} else {
-					return wrapped(...args);
-				}
-			}
-		} else {
-			if (all[base] !== undefined) {
-				return all[base](wrapped, this, ...args);
-			} else {
-				return wrapped(...args);
-			}
-		}
 	}, 'MIXED');
-	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched for ' + [(hex[base] ? 'hex' : undefined), (gridless[base] ? 'gridless' : undefined), (square[base] ? 'square' : undefined), (all[base] ? 'all' : undefined)].filter(e => e !== undefined));
+	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched');
 }
 
 async function review() {
