@@ -738,6 +738,10 @@ export function Aura_renderer_highlight(wrapped, self) {
 			return;
 		}
 		layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
-		layer.drawShape(aura_shape.polygons[0]).endFill();
+		layer.drawShape(aura_shape.polygons[0]);
+		layer.beginHole();
+		layer.drawShape(aura_shape.polygons[1]);
+		layer.endHole();
+		layer.endFill();
 	}
 }
