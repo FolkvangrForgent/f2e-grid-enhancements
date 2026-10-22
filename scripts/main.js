@@ -50,7 +50,7 @@ Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom flanking
 	patch_function('CONFIG.F2e.Token.object.onOppositeSides');
 	// [ hex & square & gridless ] Custom Reach enforcement support
-	patch_function('CONFIG.F2e.Token.object._onClickLeft2')
+	patch_function('CONFIG.F2e.Token.object._onClickLeft2');
 	// Fix for shapes and timing issue when wrapping functions
 	if (game.ready) {
 		review();
