@@ -267,6 +267,76 @@ function tokenAuraOffsetHelper(token, radius, hole) {
 	}
 }
 
+function tokenAuraOffsetPolygons(token, radius, hole) {
+	if (token.document.scene.grid.isGridless) {
+		// get the base shape data of the token
+		let aura_base;
+		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(token.document.shape)) {
+			aura_base = {
+				type: 'ellipse',
+				x: token.document.x + token.document.width * token.document.scene.grid.size / 2,
+				y: token.document.y + token.document.height * token.document.scene.grid.size / 2,
+				radiusX: token.document.width / 2 * token.document.scene.grid.size,
+				radiusY: token.document.height / 2 * token.document.scene.grid.size,
+				hole
+			}
+		} else {
+			aura_base = {
+				type: 'rectangle',
+				x: token.document.x,
+				y: token.document.y,
+				width: token.document.width * token.document.scene.grid.size,
+				height: token.document.height * token.document.scene.grid.size,
+				hole
+			}
+		}
+		// create the emenation shape of the aura
+		const aura_shape = new foundry.data.EmanationShapeData({
+			type: 'emanation',
+			base: aura_base,
+			radius: radius * token.document.scene.grid.size / token.document.scene.grid.distance,
+			gridBased: false
+		});
+		return aura_shape.polygons;
+	} else {
+		// convert offsets to edges (removing overlapping)
+		const edges = new Map();
+		for (const offset of tokenAuraOffsetHelper(token, radius, hole)) {
+			const vertices = token.document.scene.grid.getVertices(offset);
+			for (let index = 0; index < vertices.length; index++) {
+				const p0 = vertices[index];
+				const s0 = `${Math.round(p0.x * 100)},${Math.round(p0.y * 100)}`;
+				const p1 = vertices[(index + 1) % vertices.length];
+				const s1 = `${Math.round(p1.x * 100)},${Math.round(p1.y * 100)}`;
+				if (edges.delete(`${s1}>${s0}`)) continue;
+				edges.set(`${s0}>${s1}`, {p0, s0, s1});
+			}
+		}
+		// sort edges by start after removal
+		const remapped_edges = new Map();
+		for (const edge of edges.values()) {
+			remapped_edges.set(edge.s0, edge);
+		}
+		// walk the edges to create polygons
+		const polygons = [];
+		while (remapped_edges.size > 0) {
+			const points = [];
+			let edge = remapped_edges.values().next().value;
+			while (edge) {
+				remapped_edges.delete(edge.s0);
+				points.push(edge.p0.x, edge.p0.y);
+				edge = remapped_edges.get(edge.s1);
+			}
+			if (points.length >= 6) {
+				polygons.push(new PIXI.Polygon(points));
+			}
+		}
+		// order the polygons with the largest first
+		polygons.sort((a, b) => b.points.length - a.points.length);
+		return polygons;
+	}
+}
+
 // TODO check for side effects or more efficient ways to do this
 function collisionClosest(origin, destination, collision_type, scene) {
 	const upwards = origin.elevation <= destination.elevation;
@@ -495,69 +565,13 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 	}
 	// Create aura border (token base type and polygon type didn't work for some reason)
 	if (self.border.geometry.graphicsData.length === 0 && self.appearance.border?.color != null && self.appearance.border?.alpha != null) {
-		let polygon = null;
-		if (self.token.document.scene.grid.isHexagonal || self.token.document.scene.grid.isSquare) {
-			// convert offsets to edges (removing overlapping)
-			const edges = new Map();
-			for (const offset of tokenAuraOffsetHelper(self.token, self.radius, false)) {
-				const vertices = self.token.document.scene.grid.getVertices(offset);
-				for (let index = 0; index < vertices.length; index++) {
-					const p0 = vertices[index];
-					const s0 = `${Math.round(p0.x * 100)},${Math.round(p0.y * 100)}`;
-					const p1 = vertices[(index + 1) % vertices.length];
-					const s1 = `${Math.round(p1.x * 100)},${Math.round(p1.y * 100)}`;
-					if (edges.delete(`${s1}>${s0}`)) continue;
-					edges.set(`${s0}>${s1}`, {p0, s0, s1});
-				}
-			}
-			// sort edges by start after removal
-			const remapped_edges = new Map();
-			for (const edge of edges.values()) {
-				remapped_edges.set(edge.s0, edge);
-			}
-			// walk the edges to create a polygon
+		let polygons = tokenAuraOffsetPolygons(self.token, self.radius, false)
+		if (polygons[0] != null) {
+			// polygons are in scene space but the border is positioned relative to the token center
 			const center_x = self.token.document.x + self.token.mechanicalBounds.width / 2;
 			const center_y = self.token.document.y + self.token.mechanicalBounds.height / 2;
-			const points = [];
-			let edge = remapped_edges.values().next().value;
-			while (edge) {
-				remapped_edges.delete(edge.s0);
-				points.push(edge.p0.x - center_x)
-				points.push(edge.p0.y - center_y);
-				edge = remapped_edges.get(edge.s1);
-			}
-			polygon = new PIXI.Polygon(points);
-		} else if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(tokenShape(self.token))) {
-			polygon = new foundry.data.EmanationShapeData({
-				type: 'emanation',
-				base: {
-					type: 'ellipse',
-					x: 0,
-					y: 0,
-					radiusX: self.token.document.width / 2 * self.token.document.scene.grid.size,
-					radiusY: self.token.document.height / 2 * self.token.document.scene.grid.size,
-				},
-				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
-				gridBased: false
-			}).polygons[0];
-		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(tokenShape(self.token))) {
-			polygon = new foundry.data.EmanationShapeData({
-				type: 'emanation',
-				base: {
-					type: 'rectangle',
-					x: - self.token.document.width * self.token.document.scene.grid.size / 2,
-					y: - self.token.document.height * self.token.document.scene.grid.size / 2,
-					width: self.token.document.width * self.token.document.scene.grid.size,
-					height: self.token.document.height * self.token.document.scene.grid.size,
-				},
-				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
-				gridBased: false
-			}).polygons[0];
-		} else {
-			showBorder = false;
-		}
-		if (polygon != null) {
-			self.border.lineStyle(canvas.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(polygon);
+			const border_polygon = new PIXI.Polygon(polygons[0].points.map((value, index) => value - (index % 2 === 0 ? center_x : center_y)));
+			self.border.lineStyle(canvas.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(border_polygon);
 		}
 	}
 	// shift aura into the correct position here (fixes hover ghost)
@@ -700,55 +714,23 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 }
 
 export function Aura_renderer_highlight(wrapped, self) {
-	if (self.token.document.scene.grid.isGridless) {
-		let aura_base;
-		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(tokenShape(self.token))) {
-			aura_base = {
-				type: 'ellipse',
-				x: self.token.document.x + self.token.document.width * self.token.document.scene.grid.size / 2,
-				y: self.token.document.y + self.token.document.height * self.token.document.scene.grid.size / 2,
-				radiusX: self.token.document.width / 2 * self.token.document.scene.grid.size,
-				radiusY: self.token.document.height / 2 * self.token.document.scene.grid.size,
-				hole: true,
-			}
-		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(tokenShape(self.token))) {
-			aura_base = {
-				type: 'rectangle',
-				x: self.token.document.x,
-				y: self.token.document.y,
-				width: self.token.document.width * self.token.document.scene.grid.size,
-				height: self.token.document.height * self.token.document.scene.grid.size,
-				hole: true,
-			}
-		} else {
-			return;
-		}
-		const aura_shape = new foundry.data.EmanationShapeData({
-			type: 'emanation',
-			base: aura_base,
-			radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance,
-			gridBased: false
-		});
-		const layer = canvas.interface.grid.highlightLayers[self.highlightLayer.name];
-		if ( !layer ) {
-			return;
-		}
-		layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
-		layer.drawShape(aura_shape.polygons[0]);
-		layer.beginHole();
-		layer.drawShape(aura_shape.polygons[1]);
-		layer.endHole();
-		layer.endFill();
-	} else {
-		for (const offset of tokenAuraOffsetHelper(self.token, self.radius, true)) {
-			const point = self.token.document.scene.grid.getTopLeftPoint(offset);
-			canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
-				x: point.x,
-				y: point.y,
-				border: self.appearance.border?.color,
-				color: self.appearance.highlight.color,
-				alpha: self.appearance.highlight.alpha,
-			});
-		}
+	// ensure layer for highlight exists
+	const layer = canvas.interface.grid.highlightLayers[self.highlightLayer.name];
+	if ( !layer ) {
+		return;
 	}
+	// get token polygons
+	const polygons = tokenAuraOffsetPolygons(self.token, self.radius, true);
+	if (polygons.length === 0) {
+		return;
+	}
+	// draw polygons
+	layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
+	layer.drawShape(polygons[0]);
+	for (const hole of polygons.slice(1)) {
+		layer.beginHole();
+		layer.drawShape(hole);
+		layer.endHole();
+	}
+	layer.endFill();
 }
