@@ -24,7 +24,7 @@ function tokenOffsets(token, flat) {
 			}
 		}
 	} else if (token.document.scene.grid.isHexagonal) {
-		const {even, odd} = foundry.documents.BaseToken._getHexagonalOffsets(width, height, token.document.shape, token.document.scene.grid.columns);
+		const {even, odd} = foundry.documents.BaseToken._getHexagonalOffsets(width, height, tokenShape(token), token.document.scene.grid.columns);
 		for ( const {i: di, j: dj} of (((token.document.scene.grid.columns ? j_min : i_min) % 2 === 0) === token.document.scene.grid.even ? even : odd)) {
 			if (flat) {
 				offsets.push({i: i_min + di, j: j_min + dj});
@@ -65,7 +65,7 @@ function tokenShell(token) {
 		};
 		// generate column points
 		const edges = new Map();
-		for (const offset of tokenAuraOffsetHelper(token, 0, false).values()) {
+		for (const offset of tokenAuraOffsetHelper(token, 0, false)) {
 			const vertices = token.document.scene.grid.getVertices(offset);
 			for (let index = 0; index < vertices.length; index++) {
 				const p0 = vertices[index];
@@ -210,7 +210,9 @@ function tokenPoints(token) {
 }
 
 function tokenAuraOffsetHelper(token, radius, hole) {
-	if (token.document.scene.grid.isHexagonal) {
+	if (token.document.scene.grid.isGridless) {
+		return [];
+	} else {
 		// map to deduplicate
 		const offsets = new Map();
 		// outer offsets optimization
@@ -218,15 +220,15 @@ function tokenAuraOffsetHelper(token, radius, hole) {
 		// get token offsets
 		const token_offsets = tokenOffsets(token, true);
 		// add token offsets
-		for (const offset of token_offsets) {
-			const key = `${offset.i},${offset.j}`;
+		for (const token_offset of token_offsets) {
+			const key = `${token_offset.i},${token_offset.j}`;
 			if (!offsets.has(key)) {
-				offsets.set(key, offset);
-				outer_offsets.push(offset);
+				offsets.set(key, token_offset);
+				outer_offsets.push(token_offset);
 			}
 		}
 		// grow offsets
-		const steps = Math.round(radius);
+		const steps = Math.floor(radius / token.document.scene.grid.distance + NUDGE);
 		for (let step = 0; step < steps && outer_offsets.length; step++) {
 			let new_outer_offsets = [];
 			for (const outer_offset of outer_offsets) {
@@ -242,16 +244,26 @@ function tokenAuraOffsetHelper(token, radius, hole) {
 		}
 		// remove token offsets
 		if (hole) {
-			for (const offset of token_offsets) {
-				offsets.delete(`${offset.i},${offset.j}`);
+			for (const token_offset of token_offsets) {
+				offsets.delete(`${token_offset.i},${token_offset.j}`);
 			}
 		}
-		return offsets;
-	} else if (token.document.scene.grid.isSquare) {
-		// TODO
-		return [];
-	} else {
-		return [];
+		// remove square overshoot
+		if (token.document.scene.grid.isSquare) {
+			for (const offset of offsets.values()) {
+				let remove = true;
+				for (const token_offset of token_offsets) {
+					if (token.scene.grid.measurePath([offset, token_offset]).distance <= radius + NUDGE) {
+						remove = false;
+						break;
+					}
+				}
+				if (remove) {
+					offsets.delete(`${offset.i},${offset.j}`);
+				}
+			}
+		}
+		return offsets.values();
 	}
 }
 
@@ -484,10 +496,10 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 	// Create aura border (token base type and polygon type didn't work for some reason)
 	if (self.border.geometry.graphicsData.length === 0 && self.appearance.border?.color != null && self.appearance.border?.alpha != null) {
 		let polygon = null;
-		if (self.token.document.scene.grid.isHexagonal) {
+		if (self.token.document.scene.grid.isHexagonal || self.token.document.scene.grid.isSquare) {
 			// convert offsets to edges (removing overlapping)
 			const edges = new Map();
-			for (const offset of tokenAuraOffsetHelper(self.token, self.radius / self.token.document.scene.grid.distance, false).values()) {
+			for (const offset of tokenAuraOffsetHelper(self.token, self.radius, false)) {
 				const vertices = self.token.document.scene.grid.getVertices(offset);
 				for (let index = 0; index < vertices.length; index++) {
 					const p0 = vertices[index];
@@ -542,7 +554,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 				gridBased: false
 			}).polygons[0];
 		} else {
-			return;
+			showBorder = false;
 		}
 		if (polygon != null) {
 			self.border.lineStyle(canvas.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(polygon);
@@ -651,7 +663,7 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	const B = (2 * x0 * x1) / a2 + (2 * y0 * y1) / b2 + (2 * z0 * z1) / c2
 	const C = (x0 * x0) / a2 + (y0 * y0) / b2 + (z0 * z0) / c2 - 1
 	// the flanker and other are in the same spot, or the line never touches the flankee
-	if (A < 1e-12) return false;
+	if (A < NUDGE) return false;
 	const discriminant = B * B - 4 * A * C;
 	if (discriminant < 0) return false;
 	// quadratic solutions
@@ -688,23 +700,7 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 }
 
 export function Aura_renderer_highlight(wrapped, self) {
-	if (self.token.document.scene.grid.isSquare) {
-		return wrapped();
-	} else if (self.token.document.scene.grid.isHexagonal) {
-		// get offsets to highlight
-		const offsets = tokenAuraOffsetHelper(self.token, self.radius / self.token.document.scene.grid.distance, true);
-		// highlight
-		for (const offset of offsets.values()) {
-			const point = self.token.document.scene.grid.getTopLeftPoint(offset);
-			canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
-				x: point.x,
-				y: point.y,
-				border: self.appearance.border?.color,
-				color: self.appearance.highlight.color,
-				alpha: self.appearance.highlight.alpha,
-			});
-		}
-	} else if (self.token.document.scene.grid.isGridless) {
+	if (self.token.document.scene.grid.isGridless) {
 		let aura_base;
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(tokenShape(self.token))) {
 			aura_base = {
@@ -743,5 +739,16 @@ export function Aura_renderer_highlight(wrapped, self) {
 		layer.drawShape(aura_shape.polygons[1]);
 		layer.endHole();
 		layer.endFill();
+	} else {
+		for (const offset of tokenAuraOffsetHelper(self.token, self.radius, true)) {
+			const point = self.token.document.scene.grid.getTopLeftPoint(offset);
+			canvas.interface.grid.highlightPosition(self.highlightLayer.name, {
+				x: point.x,
+				y: point.y,
+				border: self.appearance.border?.color,
+				color: self.appearance.highlight.color,
+				alpha: self.appearance.highlight.alpha,
+			});
+		}
 	}
 }
