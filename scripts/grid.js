@@ -486,6 +486,10 @@ export function Region_object_snappingMode(wrapped, self){
 	}
 }
 
+export function Region_object_getCoveredGridSpaceOffsets(wrapped, self){
+	return wrapped();
+}
+
 export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {}) {
 	if (data.displayMeasurements && data.highlightMode === 'coverage') {
 		// fixup internal cone angle

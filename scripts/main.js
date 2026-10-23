@@ -45,6 +45,8 @@ Hooks.once('libWrapper.Ready', () => {
 	patch_function('CONFIG.F2e.Region.layerFoundry.placeRegion');
 	// [ hex & square & gridless ] Custom chat template snap point
 	patch_function('CONFIG.F2e.Region.object.snappingMode');
+	// [ hex & square ] Rules accurate lines
+	patch_function('CONFIG.F2e.Region.object._getCoveredGridSpaceOffsets');
 	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
 	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
 	// [ hex & square & gridless ] Custom flanking
