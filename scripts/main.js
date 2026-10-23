@@ -112,6 +112,39 @@ Hooks.once('init', () => {
 		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 15
 	});
+	game.settings.register('f2e-grid-enhancements', 'aura-collisions-highlight', {
+		name: 'f2e-grid-enhancements.setting.aura-collisions-highlight-name',
+		hint: 'f2e-grid-enhancements.setting.aura-collisions-highlight-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: true
+	});
+	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
+		name: 'f2e-grid-enhancements.setting.default-grid-type-name',
+		hint: 'f2e-grid-enhancements.setting.default-grid-type-hint',
+		scope: 'world',
+		config: true,
+		type: Number,
+		choices: {
+			0: 'SCENE.GridGridless',
+			1: 'SCENE.GridSquare',
+			2: 'SCENE.GridHexOddR',
+			3: 'SCENE.GridHexEvenR',
+			4: 'SCENE.GridHexOddQ',
+			5: 'SCENE.GridHexEvenQ'
+		},
+		default: 1,
+		requiresReload: true
+	});
+	game.settings.register('f2e-grid-enhancements', 'reach-exception', {
+		name: 'f2e-grid-enhancements.setting.reach-exception-name',
+		hint: 'f2e-grid-enhancements.setting.reach-exception-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: true
+	});
 	game.settings.register('f2e-grid-enhancements', 'flanking-angle', {
 		name: 'f2e-grid-enhancements.setting.flanking-angle-name',
 		hint: 'f2e-grid-enhancements.setting.flanking-angle-hint',
@@ -143,31 +176,6 @@ Hooks.once('init', () => {
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
 		default: false
-	});
-	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
-		name: 'f2e-grid-enhancements.setting.default-grid-type-name',
-		hint: 'f2e-grid-enhancements.setting.default-grid-type-hint',
-		scope: 'world',
-		config: true,
-		type: Number,
-		choices: {
-			0: 'SCENE.GridGridless',
-			1: 'SCENE.GridSquare',
-			2: 'SCENE.GridHexOddR',
-			3: 'SCENE.GridHexEvenR',
-			4: 'SCENE.GridHexOddQ',
-			5: 'SCENE.GridHexEvenQ'
-		},
-		default: 1,
-		requiresReload: true
-	});
-	game.settings.register('f2e-grid-enhancements', 'reach-exception', {
-		name: 'f2e-grid-enhancements.setting.reach-exception-name',
-		hint: 'f2e-grid-enhancements.setting.reach-exception-hint',
-		scope: 'world',
-		config: true,
-		type: new foundry.data.fields.BooleanField(),
-		default: true
 	});
 	// setup default grid type
 	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type')

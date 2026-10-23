@@ -337,6 +337,20 @@ function tokenAuraOffsetPolygons(token, radius, hole) {
 	}
 }
 
+function traitsCollisionTypes(traits) {
+	const collision_types = [];
+	if (traits.includes('auditory')) {
+		collision_types.push('sound');
+	}
+	if (traits.includes('visual')) {
+		collision_types.push('sight');
+	}
+	if (!traits.includes('auditory') && !traits.includes('visual')) {
+		collision_types.push('move');
+	}
+	return collision_types;
+}
+
 // TODO check for side effects or more efficient ways to do this
 function collisionClosest(origin, destination, collision_type, scene) {
 	const upwards = origin.elevation <= destination.elevation;
@@ -607,16 +621,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		return false;
 	}
 	// decide what collision types to test against
-	const collision_types = [];
-	if (self.traits.includes('auditory')) {
-		collision_types.push('sound');
-	}
-	if (self.traits.includes('visual')) {
-		collision_types.push('sight');
-	}
-	if (!self.traits.includes('auditory') && !self.traits.includes('visual')) {
-		collision_types.push('move');
-	}
+	const collision_types = traitsCollisionTypes(self.traits);
 	// do center point to shell tests for line of effect
 	const scene = self.token.object.scene;
 	const source_token_center_point = tokenCenter(self.token.object);
@@ -725,6 +730,36 @@ export function Aura_renderer_highlight(wrapped, self) {
 		return;
 	}
 	// draw polygons
+	if (game.settings.get('f2e-grid-enhancements', 'aura-collisions-highlight')) {
+		// create clipper points for polygons
+		const token_center = tokenCenter(self.token);
+		const collisionPolygonsClipperPoints = traitsCollisionTypes(self.traits).map((collision_type) =>
+			CONFIG.Canvas.polygonBackends[collision_type].create(token_center, {
+				type: collision_type,
+				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size
+			}).toClipperPoints({scalingFactor: CONST.CLIPPER_SCALING_FACTOR})
+		);
+		const tokenPolygonsClipperPoints = polygons.map((polygon) => polygon.toClipperPoints({scalingFactor: CONST.CLIPPER_SCALING_FACTOR}));
+		// draw visible area
+		const visible_clipper_tree = new ClipperLib.PolyTree();
+		const visible_clipper = new ClipperLib.Clipper();
+		visible_clipper.AddPaths(collisionPolygonsClipperPoints, ClipperLib.PolyType.ptSubject, true);
+		visible_clipper.AddPaths(tokenPolygonsClipperPoints, ClipperLib.PolyType.ptClip, true);
+		visible_clipper.Execute(ClipperLib.ClipType.ctIntersection, visible_clipper_tree, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftNonZero);
+		layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
+		foundry.data.PolygonTree.fromClipperPolyTree(visible_clipper_tree).drawShape(layer);
+		layer.endFill();
+		// draw occluded area
+		const occluded_clipper_tree = new ClipperLib.PolyTree();
+		const occluded_clipper = new ClipperLib.Clipper();
+		occluded_clipper.AddPaths(tokenPolygonsClipperPoints, ClipperLib.PolyType.ptSubject, true);
+		occluded_clipper.AddPaths(collisionPolygonsClipperPoints, ClipperLib.PolyType.ptClip, true);
+		occluded_clipper.Execute(ClipperLib.ClipType.ctDifference, occluded_clipper_tree, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftNonZero);
+		layer.beginFill(0x000000, self.appearance.highlight.alpha);
+		foundry.data.PolygonTree.fromClipperPolyTree(occluded_clipper_tree).drawShape(layer);
+		layer.endFill();
+		return;
+	}
 	layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
 	layer.drawShape(polygons[0]);
 	for (const hole of polygons.slice(1)) {

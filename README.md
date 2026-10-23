@@ -21,7 +21,8 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - (GM) `cone` internal angle can be configured for all default grid types
     - (GM) `cone` snapping angle can be configured for all default grid types
     - (GM) Default new grid type
-    - (GM) Disable default reach exception
+    - (GM) Default reach exception toggle
+    - (GM) Aura highlight wall collision toggle
     - [experimental] (GM) Flanking logic overrides and related setting
 - Chat Template
     - Snapping
