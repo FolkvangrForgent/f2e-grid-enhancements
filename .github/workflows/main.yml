@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Make packs
+      - name: Make Copendium Packs
         run: npm ci &&npm run build:packs
 
       - name: Create Module Archive

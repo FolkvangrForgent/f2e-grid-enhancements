@@ -77,6 +77,54 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 - Polish
 
+### API
+
+```js
+const api = game.modules.get("f2e-grid-enhancements").api;
+```
+
+#### `raycast(scene, origin, destination, [options])`
+
+This module exposes a 3D raycasting helper that can do both surface and wall collisions at the same time. In addition walls are constrained to the elevation ranges of the levels they occupy.
+
+##### Parameters
+
+| Parameter     | Type            | Description       |
+| ------------- | --------------- | ----------------- |
+| `scene`       | `Scene`         | Scene to raycats  |
+| `origin`      | `ElevatedPoint` | Start of the ray  |
+| `destination` | `ElevatedPoint` | End of the ray    |
+| `options`     | `object`        | Optional settings |
+
+##### Options
+
+| Option     | Type      | Default | Description                                                |
+| ---------- | --------- | ------- | ---------------------------------------------------------- |
+| `type`     | `string`  | Default | Wall restriction type                                      |
+| `mode`     | `string`  | Default | Function return type: `"any"` or `"closest"` or `"all"`    |
+| `walls`    | `boolean` | Default | Collide with walls                                         |
+| `surfaces` | `boolean` | Default | Collide with surfaces                                      |
+| `tMin`     | `number`  | Default | Start of the segment to test: `0` to `1`                   |
+| `tMax`     | `number`  | Default | End of the segment to test: `0` to `1`                     |
+| `side`     | `string`  | Default | Side of a surface the origin is on: `"above"` or `"below"` |
+
+##### Returns
+
+| Mode        | Type                |
+| ----------- | ------------------- |
+| `"any"`     | `boolean`           |
+| `"closest"` | `Collision \| null` |
+| `"all"`     | `Collision[]`       |
+
+###### `Collision`
+
+| Property   | Type             | Description                            |
+| ---------- | ---------------- | -------------------------------------- |
+| `type`     | `string`         | What was hit: `"wall"` or `"surface"`  |
+| `document` | `Wall \| Region` | The related wall or region document    |
+| `t`        | `number`         | Position along the segment: `0` to `1` |
+| `point`    | `ElevatedPoint`  | The point of the collision             |
+
 ## Not implemented
 
 ### Difficult Terrain

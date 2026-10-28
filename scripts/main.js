@@ -63,7 +63,6 @@ Hooks.once('libWrapper.Ready', () => {
 	}
 });
 
-// Module settings
 Hooks.once('init', () => {
 	// setup settings
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-template-angle', {
@@ -194,14 +193,12 @@ Hooks.once('init', () => {
 		type: new foundry.data.fields.BooleanField(),
 		default: false
 	});
-	// setup default grid type
-	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type');
+	// expose api
+	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: grid.raycast});
 });
 
 // setup new scene having unbounded elevations
 Hooks.on("preCreateScene", (scene, data, options, userId) => {
-	console.warn(scene.levels)
-	console.warn(scene.toObject().levels)
 	if (game.user.id !== userId) return;
 	const updates = {};
 	if (data.grid?.type === undefined) {

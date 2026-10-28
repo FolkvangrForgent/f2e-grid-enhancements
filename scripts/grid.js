@@ -1,8 +1,8 @@
 const PHI = Math.PI * (3 - Math.sqrt(5));
 const NUDGE = 1e-8;
 
-export function findCollisions(scene, origin, destination, {
-	tMin = 0, tMax = 1,  walls = true, surfaces = true, levels = true,
+export function raycast(scene, origin, destination, {
+	tMin = 0, tMax = 1,  walls = true, surfaces = true,
 	type = "move", mode = "any", side} = {}
 ) {
 	// clamp t values (tMin, tMax]
@@ -146,10 +146,6 @@ export function findCollisions(scene, origin, destination, {
 				if ( mode === "closest" ) tMax = Math.min(tMax, t);
 			}
 		}
-	}
-	// levels
-	if ( levels && dZ) {
-		// TODO no good implementation ideas yet
 	}
 	// sort collisions and process limited
 	collisions.sort((h1, h2) => h1.t - h2.t);
@@ -747,7 +743,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	for (const target_token_shell_point of target_token_shell_points) {
 		let constrained_target_token_shell_point = target_token_shell_point;
 		for (const collision_type of collision_types) {
-			const collision = findCollisions(scene, target_token_center_point, target_token_shell_point, {mode: "closest", type: collision_type});
+			const collision = raycast(scene, target_token_center_point, target_token_shell_point, {mode: "closest", type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
 					x: collision.point.x + (target_token_center_point.x - collision.point.x) * 0.1,
@@ -757,7 +753,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 			}
 		}
 		for (const collision_type of collision_types) {
-			if (!findCollisions(scene, source_token_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
+			if (!raycast(scene, source_token_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
 				return true;
 			}
 		}
