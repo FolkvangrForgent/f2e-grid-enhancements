@@ -18,11 +18,11 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - `point` region that is a single grid unit increment
     - `cone` internal angle and template mode snapping angle can be configured
 - Settings
-    - (GM) `cone` internal angle can be configured for all default grid types
-    - (GM) `cone` snapping angle can be configured for all default grid types
-    - (GM) New scene grid type
-    - (GM) New scene top elevation
-    - (GM) New scene bottom elevation
+    - (GM) `cone` internal angle can be configured for all grid types
+    - (GM) `cone` snapping angle can be configured for all grid types
+    - (GM) New scene default grid type
+    - (GM) New scene default level top elevation
+    - (GM) New scene default level bottom elevation
     - (GM) Default reach exception toggle
     - (GM) Aura highlight wall collision toggle
     - [experimental] (GM) Flanking logic overrides and related setting
@@ -37,7 +37,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
         - Angle
             - `cone` internal angle and snapping angle can be configured
 - Tokens
-    - Custom `distanceTo` function with support for token depth, all token shapes, and all default grid types
+    - Custom `distanceTo` function with support for token depth, all token shapes, and all grid types
         - Rounds results to nearest tenth
     - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Auras
