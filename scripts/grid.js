@@ -1,6 +1,173 @@
 const PHI = Math.PI * (3 - Math.sqrt(5));
 const NUDGE = 1e-8;
 
+export function findCollisions(scene, origin, destination, {
+	tMin = 0, tMax = 1,  walls = true, surfaces = true, levels = true,
+	type = "move", mode = "any", side} = {}
+) {
+	// clamp t values (tMin, tMax]
+	tMin = Math.max(0, tMin);
+	tMax = Math.min(1, tMax);
+	// ensure t values are valid
+	if ( tMin > tMax ) {
+		if ( mode === "closest" ) return null;
+		if ( mode === "any" ) return false;
+		return [];
+	}
+	// calculate deltas
+	const dX = destination.x - origin.x;
+	const dY = destination.y - origin.y;
+	const dZ = destination.elevation - origin.elevation;
+	// determine side
+	side ??= dZ >= 0 ? "above" : "below";
+	// calculate min and max for Z
+	const minZ = Math.min(origin.elevation, destination.elevation);
+	const maxZ = Math.max(origin.elevation, destination.elevation);
+	// find all collisions
+	const collisions = [];
+	// walls
+	if ( walls && (dX || dY) ) {
+		// calculate min and max for X and Y
+		const minX = Math.min(origin.x, destination.x);
+		const maxX = Math.max(origin.x, destination.x);
+		const minY = Math.min(origin.y, destination.y);
+		const maxY = Math.max(origin.y, destination.y);
+		// forgive first limited wall when any mode
+		let limitedForgiven = false;
+		// loop through every wall
+		for ( const wall of scene.walls ) {
+			// cheapest checks first
+			if ( wall.isDoor && wall.isOpen ) continue;
+			const edge = wall.edge;
+			const sense = edge?.[type];
+			if ( !sense ) continue;
+			if ( ((edge.a.x < minX) && (edge.b.x < minX)) || ((edge.a.x > maxX) && (edge.b.x > maxX)) || ((edge.a.y < minY) && (edge.b.y < minY)) || ((edge.a.y > maxY) && (edge.b.y > maxY)) ) continue;
+			if ( wall.levels?.size ) {
+				let resolvedAny = false;
+				let spans = false;
+				for ( const leveldentifier of wall.levels ) {
+					const level = scene.levels.get(leveldentifier);
+					if ( !level ) continue;
+					resolvedAny = true;
+					const bottom = level.elevation.bottom ?? -Infinity;
+					const top = level.elevation.top ?? Infinity;
+					if ( (bottom <= maxZ) && (top > minZ) ) {
+						spans = true;
+						break;
+					}
+				}
+				if ( !spans && resolvedAny ) continue;
+			}
+			const intersection = foundry.utils.lineSegmentIntersection(origin, destination, edge.a, edge.b);
+			if ( !intersection || (intersection.t0 <= tMin) || (intersection.t0 > tMax) ) continue;
+			intersection.elevation = origin.elevation + (intersection.t0 * dZ);
+			if ( dZ && wall.levels?.size ) {
+				let resolvedAny = false;
+				let spans = false;
+				for ( const leveldentifier of wall.levels ) {
+					const level = scene.levels.get(leveldentifier);
+					if ( !level ) continue;
+					resolvedAny = true;
+					const bottom = level.elevation.bottom ?? -Infinity;
+					const top = level.elevation.top ?? Infinity;
+					if ( (bottom <= intersection.elevation) && (top > intersection.elevation) ) {
+						spans = true;
+						break;
+					}
+				}
+				if ( !spans && resolvedAny ) continue;
+			}
+			if ( edge.direction && (edge.direction === edge.orientPoint(origin)) ) continue;
+			if ( edge.threshold && edge.applyThreshold(type, origin) ) continue;
+			if ( mode === "any" ) {
+				if ( sense !== CONST.EDGE_SENSE_TYPES.LIMITED || limitedForgiven ) return true;
+				limitedForgiven = true;
+			}
+			collisions.push({
+				limited: sense === CONST.EDGE_SENSE_TYPES.LIMITED,
+				type: "wall",
+				document: wall,
+				t: intersection.t0,
+				point: {
+					x: intersection.x,
+					y: intersection.y,
+					elevation: intersection.elevation
+				}});
+		}
+		// shrink tmax to closest collision
+		if ( mode === "closest" ) {
+			let solid = Infinity;
+			let limitedFirst = Infinity;
+			let limitedSecond = Infinity;
+			for ( const hit of collisions ) {
+				if ( !hit.limited ) {
+					if ( hit.t < solid ) solid = hit.t;
+				} else if ( hit.t < limitedFirst ) {
+					limitedSecond = limitedFirst;
+					limitedFirst = hit.t;
+				} else if ( hit.t < limitedSecond ) {
+					limitedSecond = hit.t;
+				}
+			}
+			tMax = Math.min(tMax, solid, limitedSecond);
+		}
+	}
+	// surfaces
+	if ( surfaces && dZ ) {
+		// calculate levels that are in range
+		const levelsInRange = scene.levels.filter(level => (level.elevation.top >= minZ) && (level.elevation.bottom <= maxZ));
+		// calulate bounds for optimization
+		const bounds = new PIXI.Rectangle(
+			origin.x + (dX * tMin),
+			origin.y + (dY * tMin),
+			dX * (tMax - tMin),
+			dY * (tMax - tMin)
+		).normalize().pad(1);
+		const seen = new Set();
+		for ( const level of levelsInRange ) {
+			for ( const {region, elevation} of scene.getSurfaces({type, level}) ) {
+				// cheapest checks first
+				if ( side === "above" ) {
+					if ( (elevation < minZ) || (elevation >= maxZ) ) continue;
+				} else {
+					if ( (elevation <= minZ) || (elevation > maxZ) ) continue;
+				}
+				const t = (elevation - origin.elevation) / dZ;
+				if ( !(((t === 0) && (tMin === 0)) || ((t > tMin) && (t <= tMax))) ) continue;
+				if ( !region.bounds.intersects(bounds) ) continue;
+				const key = `${region.id}|${elevation}`;
+				if ( seen.has(key) ) continue;
+				const point = {x: origin.x + (dX * t), y: origin.y + (dY * t), elevation};
+				if ( !region.polygonTree.testPoint(point, 0.75) ) continue;
+				if ( mode === "any" ) return true;
+				seen.add(key);
+				collisions.push({type: "surface", t, point, document: region});
+				// shrink tmax to closest collision
+				if ( mode === "closest" ) tMax = Math.min(tMax, t);
+			}
+		}
+	}
+	// levels
+	if ( levels && dZ) {
+		// TODO no good implementation ideas yet
+	}
+	// sort collisions and process limited
+	collisions.sort((h1, h2) => h1.t - h2.t);
+	const blocking = [];
+	let limitedSeen = false;
+	for ( const hit of collisions ) {
+		if ( hit.limited && !limitedSeen ) {
+			limitedSeen = true;
+			continue;
+		}
+		blocking.push(hit);
+		if ( mode !== "all" ) break;
+	}
+	if ( mode === "closest" ) return blocking[0] ?? null;
+	if ( mode === "any" ) return blocking.length > 0;
+	return blocking;
+}
+
 function tokenOffsets(token, flat) {
 	// heavily modified logic from core getOccupiedGridSpaceOffsets to remove collisions and allow flat offsets without k
 	const offsets = [];
@@ -351,66 +518,6 @@ function traitsCollisionTypes(traits) {
 	return collision_types;
 }
 
-// TODO check for side effects or more efficient ways to do this
-function collisionClosest(origin, destination, collision_type, scene) {
-	const upwards = origin.elevation <= destination.elevation;
-	let wall_collision = null;
-	let wall_collision_distance = 1;
-	const collision = CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {type: collision_type, mode: 'closest'})
-	if (collision?._distance < wall_collision_distance) {
-		wall_collision_distance = collision?._distance;
-		wall_collision = {
-			x: origin.x + (destination.x - origin.x) * wall_collision_distance,
-			y: origin.y + (destination.y - origin.y) * wall_collision_distance,
-			elevation: origin.elevation + (destination.elevation - origin.elevation) * wall_collision_distance,
-		};
-	}
-	let surface_collision = null;
-	let surface_collision_elevation = destination.elevation;
-	for (const level of scene.levels.keys()) {
-		if ( upwards ) {
-			let collision = scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "above", level});
-			if (collision?.elevation < surface_collision_elevation) {
-				surface_collision_elevation = collision?.elevation;
-				surface_collision = collision;
-			}
-		} else {
-			let collision = scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "closest", side: "below", level});
-			if (collision?.elevation > surface_collision_elevation) {
-				surface_collision_elevation = collision?.elevation;
-				surface_collision = collision;
-			}
-		}
-	}
-	if ( !surface_collision ) return wall_collision;
-	if ( !wall_collision ) return surface_collision;
-	if ( upwards ) {
-		return wall_collision.elevation <= surface_collision.elevation ? wall_collision : surface_collision;
-	} else {
-		return wall_collision.elevation >= surface_collision.elevation ? wall_collision : surface_collision;
-	}
-}
-
-// TODO check for side effects or more efficient ways to do this
-function collisionAny(origin, destination, collision_type, scene) {
-	if (CONFIG.Canvas.polygonBackends[collision_type].testCollision(origin, destination, {type: collision_type, mode: 'any'})) {
-		return true;
-	}
-	const upwards = origin.elevation <= destination.elevation;
-	for (const level of scene.levels.keys()) {
-		if ( upwards ) {
-			if (scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "any", side: "above", level})) {
-				return true;
-			}
-		} else {
-			if (scene.testSurfaceCollision(origin, destination, {type: collision_type, mode: "any", side: "below", level})) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 export function Token_object_distanceTo(wrapped, self, target, opts) {
 	// if target is self distance will always be 0
 	if (self === target) return 0;
@@ -640,17 +747,17 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	for (const target_token_shell_point of target_token_shell_points) {
 		let constrained_target_token_shell_point = target_token_shell_point;
 		for (const collision_type of collision_types) {
-			const collision = collisionClosest(source_token_center_point, target_token_shell_point, collision_type, scene);
+			const collision = findCollisions(scene, target_token_center_point, target_token_shell_point, {mode: "closest", type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
-					x: collision.x + (target_token_center_point.x - collision.x) * 0.1,
-					y: collision.y + (target_token_center_point.y - collision.y) * 0.1,
-					elevation: collision.elevation + (target_token_center_point.elevation - collision.elevation) * 0.1
+					x: collision.point.x + (target_token_center_point.x - collision.point.x) * 0.1,
+					y: collision.point.y + (target_token_center_point.y - collision.point.y) * 0.1,
+					elevation: collision.point.elevation + (target_token_center_point.elevation - collision.point.elevation) * 0.1
 				};
 			}
 		}
 		for (const collision_type of collision_types) {
-			if (!collisionAny(source_token_center_point, constrained_target_token_shell_point, collision_type, scene)) {
+			if (!findCollisions(scene, source_token_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
 				return true;
 			}
 		}

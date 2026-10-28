@@ -180,7 +180,20 @@ Hooks.once('init', () => {
 		default: false
 	});
 	// setup default grid type
-	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type')
+	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type');
+	// setup new scene having unbounded elevation
+	Hooks.on("preCreateScene", (scene, data, options, userId) => {
+		if (game.user.id !== userId) return;
+		const levels = scene._source.levels ?? [];
+		if (levels.length !== 1) return;
+		const level = levels[0];
+		const {bottom, top} = level.elevation ?? {};
+		const isDefault = (bottom === 0) && (top === 20);
+		if (!isDefault) return;
+		scene.updateSource({
+			levels: [{_id: level._id, elevation: {bottom: null, top: null}}]
+		});
+	});
 });
 
 
