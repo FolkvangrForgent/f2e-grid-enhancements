@@ -14,17 +14,19 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 ### General Improvements
 
-- Scene Region
+- Regions
     - `point` region that is a single grid unit increment
     - `cone` internal angle and template mode snapping angle can be configured
 - Settings
     - (GM) `cone` internal angle can be configured for all default grid types
     - (GM) `cone` snapping angle can be configured for all default grid types
-    - (GM) Default new grid type
+    - (GM) New scene grid type
+    - (GM) New scene top elevation
+    - (GM) New scene bottom elevation
     - (GM) Default reach exception toggle
     - (GM) Aura highlight wall collision toggle
     - [experimental] (GM) Flanking logic overrides and related setting
-- Chat Template
+- Areas
     - Snapping
         - Origin
             - `point` snaps to centers
@@ -34,40 +36,40 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
             - `line` snaps to midpoints or vertices
         - Angle
             - `cone` internal angle and snapping angle can be configured
-- Token
+- Tokens
     - Custom `distanceTo` function with support for token depth, all token shapes, and all default grid types
         - Rounds results to nearest tenth
     - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
-- Aura
+- Auras
     - Only activate on grids with units of 'ft'
     - Custom aura `containsToken` function
-    - Use an algorithm that is often more permissive than the system algorithm
-        - Determine if a token is in range of the token emitting an aura
-        - Generate a shell of points on the token the aura may be affecting (constraining these by walls of the auras type)
-        - Check from the center of the token emitting the aura to shell points around the token if any do not collide then the aura is applied
-- Compendium
+        - Use an algorithm that is often more permissive than the system algorithm
+            - Determine if a token is in range of the token emitting an aura
+            - Generate a shell of points on the token the aura may be affecting (constraining these by walls of the auras type)
+            - Check from the center of the token emitting the aura to shell points around the token if any do not collide then the aura is applied
+- Compendiums
     - Custom feat and effect for manual toggle if target is off guard
 
 ### Hex Improvements
 
-- Token
+- Tokens
     - Reach enforcement support
-- Aura
-    - Support aura via extending system implementation
-
+- Auras
+    - Support via extending system implementation
+    - Accurate border shape
 
 ### Square Improvements
 
-- Aura
-    - More accurate border shape
+- Auras
+    - Accurate border shape
 
 ### Gridless Improvements
 
-- Token
+- Tokens
     - Reach enforcement support
-- Aura
-    - Support aura via extending system implementation
-    - More accurate border shape
+- Auras
+    - Support via extending system implementation
+    - Accurate border shape
 
 ### Languages
 

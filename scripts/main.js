@@ -136,8 +136,23 @@ Hooks.once('init', () => {
 			4: 'SCENE.GridHexOddQ',
 			5: 'SCENE.GridHexEvenQ'
 		},
-		default: 1,
-		requiresReload: true
+		default: 1
+	});
+	game.settings.register('f2e-grid-enhancements', 'default-top-elevation', {
+		name: 'f2e-grid-enhancements.setting.default-top-elevation-name',
+		hint: 'f2e-grid-enhancements.setting.default-top-elevation-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.NumberField({nullable: true}),
+		default: null
+	});
+	game.settings.register('f2e-grid-enhancements', 'default-bottom-elevation', {
+		name: 'f2e-grid-enhancements.setting.default-bottom-elevation-name',
+		hint: 'f2e-grid-enhancements.setting.default-bottom-elevation-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.NumberField({nullable: true}),
+		default: null
 	});
 	game.settings.register('f2e-grid-enhancements', 'reach-exception', {
 		name: 'f2e-grid-enhancements.setting.reach-exception-name',
@@ -181,22 +196,39 @@ Hooks.once('init', () => {
 	});
 	// setup default grid type
 	game.system.grid.type = game.settings.get('f2e-grid-enhancements', 'default-grid-type');
-	// setup new scene having unbounded elevation
-	Hooks.on("preCreateScene", (scene, data, options, userId) => {
-		if (game.user.id !== userId) return;
-		const levels = scene._source.levels ?? [];
-		if (levels.length !== 1) return;
-		const level = levels[0];
-		const {bottom, top} = level.elevation ?? {};
-		const isDefault = (bottom === 0) && (top === 20);
-		if (!isDefault) return;
-		scene.updateSource({
-			levels: [{_id: level._id, elevation: {bottom: null, top: null}}]
-		});
-	});
 });
 
-
+// setup new scene having unbounded elevations
+Hooks.on("preCreateScene", (scene, data, options, userId) => {
+	console.warn(scene.levels)
+	console.warn(scene.toObject().levels)
+	if (game.user.id !== userId) return;
+	const updates = {};
+	if (data.grid?.type === undefined) {
+		updates['grid.type'] = game.settings.get('f2e-grid-enhancements', 'default-grid-type');
+	}
+	if (!data.levels?.length) {
+		const elevation = {
+			bottom: game.settings.get('f2e-grid-enhancements', 'default-bottom-elevation'),
+			top: game.settings.get('f2e-grid-enhancements', 'default-top-elevation')
+		};
+		const existing = scene.toObject().levels ?? [];
+		if (existing.length) {
+			updates.levels = existing.map((level, i) =>
+				i === 0 ? { ...level, elevation: { ...level.elevation, ...elevation } } : level
+			);
+		} else {
+			updates.levels = [{
+				_id: foundry.utils.randomID(),
+				name: 'Level',
+				elevation
+			}];
+		}
+	}
+	if (!foundry.utils.isEmpty(updates)) {
+		scene.updateSource(updates);
+	}
+});
 
 // Custom template controls
 Hooks.on('getSceneControlButtons', (controls) => {
