@@ -133,7 +133,7 @@ export function raycast(scene, origin, destination, {
 					if ( (elevation <= minZ) || (elevation > maxZ) ) continue;
 				}
 				const t = (elevation - origin.elevation) / dZ;
-				if ( !(((t === 0) && (tMin === 0)) || ((t > tMin) && (t <= tMax))) ) continue;
+				if ( !(t >= tMin && t <= tMax) ) continue;
 				if ( !region.bounds.intersects(bounds) ) continue;
 				const key = `${region.id}|${elevation}`;
 				if ( seen.has(key) ) continue;
@@ -202,17 +202,25 @@ function tokenOffsets(token, flat) {
 	return offsets;
 }
 
-function tokenCenter(token) {
+
+function tokenCenterBottom(token) {
+	return token.document.getCenterPoint()
+}
+
+function tokenCenterCenter(token) {
 	const center_point = token.document.getCenterPoint()
-	if (!token.document.scene.grid.isGridless) {
-		center_point.elevation = Math.floor((token.document.elevation / token.document.scene.grid.distance) + NUDGE) * token.document.scene.grid.distance;
-	}
 	center_point.elevation += token.document.depth / 2 * token.document.scene.grid.distance;
 	return center_point;
 }
 
+function tokenCenterTop(token) {
+	const center_point = token.document.getCenterPoint()
+	center_point.elevation += token.document.depth * token.document.scene.grid.distance;
+	return center_point;
+}
+
 function tokenNormalizedCenter(token) {
-	const center = tokenCenter(token);
+	const center = tokenCenterCenter(token);
 	return {x: center.x / token.document.scene.grid.size, y: center.y / token.document.scene.grid.size, z: center.elevation / token.document.scene.grid.distance};
 }
 
@@ -729,10 +737,22 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	}
 	// decide what collision types to test against
 	const collision_types = traitsCollisionTypes(self.traits);
-	// do center point to shell tests for line of effect
-	const scene = self.token.object.scene;
-	const source_token_center_point = tokenCenter(self.token.object);
-	const target_token_center_point = tokenCenter(token.object);
+	// create center points bound by surfaces
+	const source_token_center_top_point = tokenCenterTop(self.token.object);
+	const source_token_center_bottom_point = tokenCenterBottom(self.token.object);
+	const target_token_center_top_point = tokenCenterTop(token.object);
+	const target_token_center_bottom_point = tokenCenterBottom(token.object);
+	const source_token_usable_center_point_map = new Map();
+	const target_token_usable_center_point_map = new Map();
+	for (const collision_type of collision_types) {
+		const source_token_usable_center_point = raycast(self.token.object.scene, source_token_center_bottom_point, source_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? source_token_center_top_point;
+		source_token_usable_center_point.elevation = (source_token_usable_center_point.elevation + source_token_center_bottom_point.elevation) / 2;
+		source_token_usable_center_point_map[collision_type] = source_token_usable_center_point;
+		const target_token_usable_center_point = raycast(self.token.object.scene, target_token_center_bottom_point, target_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? target_token_center_top_point;
+		target_token_usable_center_point.elevation = (target_token_usable_center_point.elevation + target_token_center_bottom_point.elevation) / 2;
+		target_token_usable_center_point_map[collision_type] = target_token_usable_center_point;
+	}
+	// get shell points and randomize them
 	const target_token_shell_points = tokenShell(token.object);
 	for (let index = target_token_shell_points.length - 1; index > 0; index--) {
 		const random_index = Math.floor(Math.random() * (index + 1));
@@ -740,20 +760,19 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		target_token_shell_points[index] = target_token_shell_points[random_index];
 		target_token_shell_points[random_index] = temporary_value;
 	}
+	// do center point to shell tests for line of effect
 	for (const target_token_shell_point of target_token_shell_points) {
-		let constrained_target_token_shell_point = target_token_shell_point;
 		for (const collision_type of collision_types) {
-			const collision = raycast(scene, target_token_center_point, target_token_shell_point, {mode: "closest", type: collision_type});
+			let constrained_target_token_shell_point = target_token_shell_point;
+			const collision = raycast(self.token.object.scene, target_token_usable_center_point_map[collision_type], constrained_target_token_shell_point, {mode: "closest", type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
-					x: collision.point.x + (target_token_center_point.x - collision.point.x) * 0.1,
-					y: collision.point.y + (target_token_center_point.y - collision.point.y) * 0.1,
-					elevation: collision.point.elevation + (target_token_center_point.elevation - collision.point.elevation) * 0.1
+					x: collision.point.x + (target_token_usable_center_point_map[collision_type].x - collision.point.x) * 0.1,
+					y: collision.point.y + (target_token_usable_center_point_map[collision_type].y - collision.point.y) * 0.1,
+					elevation: collision.point.elevation + (target_token_usable_center_point_map[collision_type].elevation - collision.point.elevation) * 0.1
 				};
 			}
-		}
-		for (const collision_type of collision_types) {
-			if (!raycast(scene, source_token_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
+			if (!raycast(self.token.object.scene, source_token_usable_center_point_map[collision_type], constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
 				return true;
 			}
 		}
@@ -839,7 +858,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 	// draw polygons
 	if (game.settings.get('f2e-grid-enhancements', 'aura-collisions-highlight')) {
 		// create clipper points for polygons
-		const token_center = tokenCenter(self.token);
+		const token_center = tokenCenterCenter(self.token);
 		const collisionPolygonsClipperPoints = traitsCollisionTypes(self.traits).map((collision_type) =>
 			CONFIG.Canvas.polygonBackends[collision_type].create(token_center, {
 				type: collision_type,
