@@ -687,11 +687,22 @@ export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
 	} else if (self.templateMode && (event.interactionData.shape?.type === 'line' || event.interactionData.shape?.type === 'cone')) {
-		const rotation_angle = event.interactionData.shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
-		const rotation = event.interactionData.shape.rotation.toNearest(rotation_angle);
-		if (rotation_angle > 0 && rotation !== event.interactionData.shape.rotation) {
-			event.interactionData.shape.updateSource({rotation});
-			self._updateDragPreview(event);
+		let angle = 5;
+		if (event.interactionData.shape.type === 'cone' ) {
+			if (canvas.scene.grid.isSquare) {
+				angle = game.settings.get('f2e-grid-enhancements', `square-cone-snapping-angle`)
+			} else if (canvas.scene.grid.isHexagonal) {
+				angle = game.settings.get('f2e-grid-enhancements', `hex-cone-snapping-angle`)
+			} else {
+				angle = game.settings.get('f2e-grid-enhancements', `gridless-cone-snapping-angle`)
+			}
+		}
+		if (!(event.ctrlKey || event.metaKey || angle === 0)) {
+			const rotation = event.interactionData.shape.rotation.toNearest(angle);
+			if (rotation !== event.interactionData.shape.rotation) {
+				event.interactionData.shape.updateSource({rotation});
+				self._updateDragPreview(event);
+			}
 		}
 	}
 }
