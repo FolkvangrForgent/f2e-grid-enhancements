@@ -41,7 +41,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
         - Rounds results to nearest tenth
     - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Auras
-    - Only activate on grids with units of 'ft'
+    - Only activate on grids with units of `'ft'`, `'feet'`, or `''`
     - Custom aura `containsToken` function
         - Use an algorithm that is often more permissive than the system algorithm
             - Determine if a token is in range of the token emitting an aura
@@ -77,7 +77,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 ### API
 
 ```js
-const api = game.modules.get("f2e-grid-enhancements").api;
+const api = game.modules.get('f2e-grid-enhancements').api;
 ```
 
 #### `raycast(scene, origin, destination, [options])`
@@ -88,7 +88,7 @@ This module exposes a 3D raycasting helper that can do both surface and wall col
 
 | Parameter     | Type            | Description       |
 | ------------- | --------------- | ----------------- |
-| `scene`       | `Scene`         | Scene to raycats  |
+| `scene`       | `Scene`         | Scene to raycast  |
 | `origin`      | `ElevatedPoint` | Start of the ray  |
 | `destination` | `ElevatedPoint` | End of the ray    |
 | `options`     | `object`        | Optional settings |
@@ -97,28 +97,28 @@ This module exposes a 3D raycasting helper that can do both surface and wall col
 
 | Option     | Type               | Default  | Description                                                |
 | ---------- | ------------------ | -------- | ---------------------------------------------------------- |
-| `type`     | `string`           | `"move"` | Wall restriction type                                      |
-| `mode`     | `string`           | `"any"`  | Function return type: `"any"` or `"closest"` or `"all"`    |
+| `type`     | `string`           | `'move'` | Wall restriction type                                      |
+| `mode`     | `string`           | `'any'`  | Function return type: `'any'` or `'closest'` or `'all'`    |
 | `walls`    | `boolean`          | `true`   | Collide with walls                                         |
 | `surfaces` | `boolean`          | `true`   | Collide with surfaces                                      |
 | `tMin`     | `number`           | `0`      | Start of the segment to test: `0` to `1`                   |
 | `tMax`     | `number`           | `1`      | End of the segment to test: `0` to `1`                     |
-| `side`     | `string \| null`   | `null`   | Side of a surface the origin is on: `"above"` or `"below"` |
+| `side`     | `string \| null`   | `null`   | Side of a surface the origin is on: `'above'` or `'below'` |
 | `levels`   | `string[] \| null` | `null`   | Level identifiers to restrict collisions to                |
 
 ##### Returns
 
 | Mode        | Type                |
 | ----------- | ------------------- |
-| `"any"`     | `boolean`           |
-| `"closest"` | `Collision \| null` |
-| `"all"`     | `Collision[]`       |
+| `'any'`     | `boolean`           |
+| `'closest'` | `Collision \| null` |
+| `'all'`     | `Collision[]`       |
 
 ###### `Collision`
 
 | Property   | Type             | Description                            |
 | ---------- | ---------------- | -------------------------------------- |
-| `type`     | `string`         | What was hit: `"wall"` or `"surface"`  |
+| `type`     | `string`         | What was hit: `'wall'` or `'surface'`  |
 | `document` | `Wall \| Region` | The related wall or region document    |
 | `t`        | `number`         | Position along the segment: `0` to `1` |
 | `point`    | `ElevatedPoint`  | The point of the collision             |
