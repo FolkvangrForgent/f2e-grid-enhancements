@@ -3,7 +3,7 @@ const NUDGE = 1e-8;
 
 export function raycast(scene, origin, destination, {
 	tMin = 0, tMax = 1,  walls = true, surfaces = true,
-	type = "move", mode = "any", side} = {}
+	type = "move", mode = "any", side, levels} = {}
 ) {
 	// clamp t values (tMin, tMax]
 	tMin = Math.max(0, tMin);
@@ -23,6 +23,8 @@ export function raycast(scene, origin, destination, {
 	// calculate min and max for Z
 	const minZ = Math.min(origin.elevation, destination.elevation);
 	const maxZ = Math.max(origin.elevation, destination.elevation);
+	// calculate levels that are in range
+	levels ??= scene.levels.filter(level => (level.elevation.top >= minZ) && (level.elevation.bottom <= maxZ)).map(level => level.id);
 	// find all collisions
 	const collisions = [];
 	// walls
@@ -43,12 +45,16 @@ export function raycast(scene, origin, destination, {
 			if ( !sense ) continue;
 			if ( ((edge.a.x < minX) && (edge.b.x < minX)) || ((edge.a.x > maxX) && (edge.b.x > maxX)) || ((edge.a.y < minY) && (edge.b.y < minY)) || ((edge.a.y > maxY) && (edge.b.y > maxY)) ) continue;
 			if ( wall.levels?.size ) {
-				let resolvedAny = false;
 				let spans = false;
-				for ( const leveldentifier of wall.levels ) {
-					const level = scene.levels.get(leveldentifier);
+				let resolved = false;
+				let validLevel = false;
+				for ( const levelIdentifier of wall.levels ) {
+					if (!validLevel && levelIdentifier in levels) {
+						validLevel = true;
+					}
+					const level = scene.levels.get(levelIdentifier);
 					if ( !level ) continue;
-					resolvedAny = true;
+					resolved = true;
 					const bottom = level.elevation.bottom ?? -Infinity;
 					const top = level.elevation.top ?? Infinity;
 					if ( (bottom <= maxZ) && (top > minZ) ) {
@@ -56,18 +62,18 @@ export function raycast(scene, origin, destination, {
 						break;
 					}
 				}
-				if ( !spans && resolvedAny ) continue;
+				if ( (!spans || !validLevel) && resolved ) continue;
 			}
 			const intersection = foundry.utils.lineSegmentIntersection(origin, destination, edge.a, edge.b);
 			if ( !intersection || (intersection.t0 <= tMin) || (intersection.t0 > tMax) ) continue;
 			intersection.elevation = origin.elevation + (intersection.t0 * dZ);
 			if ( dZ && wall.levels?.size ) {
-				let resolvedAny = false;
 				let spans = false;
+				let resolved = false;
 				for ( const leveldentifier of wall.levels ) {
 					const level = scene.levels.get(leveldentifier);
 					if ( !level ) continue;
-					resolvedAny = true;
+					resolved = true;
 					const bottom = level.elevation.bottom ?? -Infinity;
 					const top = level.elevation.top ?? Infinity;
 					if ( (bottom <= intersection.elevation) && (top > intersection.elevation) ) {
@@ -75,7 +81,7 @@ export function raycast(scene, origin, destination, {
 						break;
 					}
 				}
-				if ( !spans && resolvedAny ) continue;
+				if ( !spans && resolved ) continue;
 			}
 			if ( edge.direction && (edge.direction === edge.orientPoint(origin)) ) continue;
 			if ( edge.threshold && edge.applyThreshold(type, origin) ) continue;
@@ -114,8 +120,6 @@ export function raycast(scene, origin, destination, {
 	}
 	// surfaces
 	if ( surfaces && dZ ) {
-		// calculate levels that are in range
-		const levelsInRange = scene.levels.filter(level => (level.elevation.top >= minZ) && (level.elevation.bottom <= maxZ));
 		// calulate bounds for optimization
 		const bounds = new PIXI.Rectangle(
 			origin.x + (dX * tMin),
@@ -124,7 +128,7 @@ export function raycast(scene, origin, destination, {
 			dY * (tMax - tMin)
 		).normalize().pad(1);
 		const seen = new Set();
-		for ( const level of levelsInRange ) {
+		for ( const level of levels ) {
 			for ( const {region, elevation} of scene.getSurfaces({type, level}) ) {
 				// cheapest checks first
 				if ( side === "above" ) {
@@ -862,8 +866,9 @@ export function Aura_renderer_highlight(wrapped, self) {
 		const token_center = tokenCenterBottom(self.token);
 		const collision_radius = self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size;
 		// get levels to add wall collisions from
-		let levels = self.token.document.scene.levels.contents.filter((level) => token_center.elevation >= level.elevation.bottom && token_center.elevation < level.elevation.top);
-		levels = levels.length ? levels : [null]
+		let levels = [self.token.document.scene.levels.get(self.token.document.level)];
+		levels = levels.length ? levels : self.token.document.scene.levels.contents.filter((level) => token_center.elevation >= level.elevation.bottom && token_center.elevation < level.elevation.top);
+		levels = levels.length ? levels : [null];
 		// create clipper points
 		const collision_types_paths = [];
 		for (const collision_type of traitsCollisionTypes(self.traits)) {

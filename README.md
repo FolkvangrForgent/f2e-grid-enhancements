@@ -95,15 +95,16 @@ This module exposes a 3D raycasting helper that can do both surface and wall col
 
 ##### Options
 
-| Option     | Type      | Default | Description                                                |
-| ---------- | --------- | ------- | ---------------------------------------------------------- |
-| `type`     | `string`  | Default | Wall restriction type                                      |
-| `mode`     | `string`  | Default | Function return type: `"any"` or `"closest"` or `"all"`    |
-| `walls`    | `boolean` | Default | Collide with walls                                         |
-| `surfaces` | `boolean` | Default | Collide with surfaces                                      |
-| `tMin`     | `number`  | Default | Start of the segment to test: `0` to `1`                   |
-| `tMax`     | `number`  | Default | End of the segment to test: `0` to `1`                     |
-| `side`     | `string`  | Default | Side of a surface the origin is on: `"above"` or `"below"` |
+| Option     | Type               | Default  | Description                                                |
+| ---------- | ------------------ | -------- | ---------------------------------------------------------- |
+| `type`     | `string`           | `"move"` | Wall restriction type                                      |
+| `mode`     | `string`           | `"any"`  | Function return type: `"any"` or `"closest"` or `"all"`    |
+| `walls`    | `boolean`          | `true`   | Collide with walls                                         |
+| `surfaces` | `boolean`          | `true`   | Collide with surfaces                                      |
+| `tMin`     | `number`           | `0`      | Start of the segment to test: `0` to `1`                   |
+| `tMax`     | `number`           | `1`      | End of the segment to test: `0` to `1`                     |
+| `side`     | `string \| null`   | `null`   | Side of a surface the origin is on: `"above"` or `"below"` |
+| `levels`   | `string[] \| null` | `null`   | Level identifiers to restrict collisions to                |
 
 ##### Returns
 
