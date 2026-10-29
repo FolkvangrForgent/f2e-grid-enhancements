@@ -859,21 +859,39 @@ export function Aura_renderer_highlight(wrapped, self) {
 	}
 	// draw polygons
 	if (game.settings.get('f2e-grid-enhancements', 'aura-collisions-highlight')) {
-		// create clipper points for polygons
-		const token_center = tokenCenterCenter(self.token);
-		const collisionPolygonsClipperPoints = traitsCollisionTypes(self.traits).map((collision_type) =>
-			CONFIG.Canvas.polygonBackends[collision_type].create(token_center, {
-				type: collision_type,
-				radius: self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size
-			}).toClipperPoints({scalingFactor: CONST.CLIPPER_SCALING_FACTOR})
-		);
+		const token_center = tokenCenterBottom(self.token);
+		const collision_radius = self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size;
+		// get levels to add wall collisions from
+		let levels = self.token.document.scene.levels.contents.filter((level) => token_center.elevation >= level.elevation.bottom && token_center.elevation < level.elevation.top);
+		levels = levels.length ? levels : [null]
+		// create clipper points
+		const collision_types_paths = [];
+		for (const collision_type of traitsCollisionTypes(self.traits)) {
+			let collision_type_paths = null;
+			for (const level of levels) {
+				const collision_level_paths = [CONFIG.Canvas.polygonBackends[collision_type].create(token_center, {level, type: collision_type, radius: collision_radius, useThreshold: true}).toClipperPoints({scalingFactor: CONST.CLIPPER_SCALING_FACTOR})];
+				if (collision_type_paths !== null) {
+					const level_clipper = new ClipperLib.Clipper();
+					level_clipper.AddPaths(collision_type_paths, ClipperLib.PolyType.ptSubject, true);
+					level_clipper.AddPaths(collision_level_paths, ClipperLib.PolyType.ptClip, true);
+					const level_intersection = [];
+					level_clipper.Execute(ClipperLib.ClipType.ctIntersection, level_intersection, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+					collision_type_paths = level_intersection;
+				} else {
+					collision_type_paths = collision_level_paths;
+					continue;
+				}
+			}
+			collision_types_paths.push(collision_type_paths);
+		}
+		const collisionPolygonsClipperPoints = collision_types_paths.flat();
 		const tokenPolygonsClipperPoints = polygons.map((polygon) => polygon.toClipperPoints({scalingFactor: CONST.CLIPPER_SCALING_FACTOR}));
 		// draw visible area
 		const visible_clipper_tree = new ClipperLib.PolyTree();
 		const visible_clipper = new ClipperLib.Clipper();
 		visible_clipper.AddPaths(collisionPolygonsClipperPoints, ClipperLib.PolyType.ptSubject, true);
 		visible_clipper.AddPaths(tokenPolygonsClipperPoints, ClipperLib.PolyType.ptClip, true);
-		visible_clipper.Execute(ClipperLib.ClipType.ctIntersection, visible_clipper_tree, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftNonZero);
+		visible_clipper.Execute(ClipperLib.ClipType.ctIntersection, visible_clipper_tree, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
 		layer.beginFill(self.appearance.highlight.color, self.appearance.highlight.alpha);
 		foundry.data.PolygonTree.fromClipperPolyTree(visible_clipper_tree).drawShape(layer);
 		layer.endFill();
@@ -882,7 +900,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		const occluded_clipper = new ClipperLib.Clipper();
 		occluded_clipper.AddPaths(tokenPolygonsClipperPoints, ClipperLib.PolyType.ptSubject, true);
 		occluded_clipper.AddPaths(collisionPolygonsClipperPoints, ClipperLib.PolyType.ptClip, true);
-		occluded_clipper.Execute(ClipperLib.ClipType.ctDifference, occluded_clipper_tree, ClipperLib.PolyFillType.pftEvenOdd, ClipperLib.PolyFillType.pftNonZero);
+		occluded_clipper.Execute(ClipperLib.ClipType.ctDifference, occluded_clipper_tree, ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
 		layer.beginFill(0x000000, self.appearance.highlight.alpha);
 		foundry.data.PolygonTree.fromClipperPolyTree(occluded_clipper_tree).drawShape(layer);
 		layer.endFill();

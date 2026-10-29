@@ -47,6 +47,8 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
             - Determine if a token is in range of the token emitting an aura
             - Generate a shell of points on the token the aura may be affecting (constraining these by walls of the auras type)
             - Check from the center of the token emitting the aura to shell points around the token if any do not collide then the aura is applied
+    - Accurate border shape
+    - Accurate highlight
 - Compendiums
     - Custom feat and effect for manual toggle if target is off guard
 
@@ -56,12 +58,8 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - Reach enforcement support
 - Auras
     - Support via extending system implementation
-    - Accurate border shape
 
 ### Square Improvements
-
-- Auras
-    - Accurate border shape
 
 ### Gridless Improvements
 
@@ -69,7 +67,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - Reach enforcement support
 - Auras
     - Support via extending system implementation
-    - Accurate border shape
 
 ### Languages
 
