@@ -3,15 +3,15 @@ const NUDGE = 1e-8;
 
 export function raycast(scene, origin, destination, {
 	tMin = 0, tMax = 1,  walls = true, surfaces = true,
-	type = "move", mode = "any", side, levels} = {}
+	type = 'move', mode = 'any', side, levels} = {}
 ) {
 	// clamp t values (tMin, tMax]
 	tMin = Math.max(0, tMin);
 	tMax = Math.min(1, tMax);
 	// ensure t values are valid
 	if ( tMin > tMax ) {
-		if ( mode === "closest" ) return null;
-		if ( mode === "any" ) return false;
+		if ( mode === 'closest' ) return null;
+		if ( mode === 'any' ) return false;
 		return [];
 	}
 	// calculate deltas
@@ -19,7 +19,7 @@ export function raycast(scene, origin, destination, {
 	const dY = destination.y - origin.y;
 	const dZ = destination.elevation - origin.elevation;
 	// determine side
-	side ??= dZ <= 0 ? "above" : "below";
+	side ??= dZ <= 0 ? 'above' : 'below';
 	// calculate min and max for Z
 	const minZ = Math.min(origin.elevation, destination.elevation);
 	const maxZ = Math.max(origin.elevation, destination.elevation);
@@ -49,17 +49,17 @@ export function raycast(scene, origin, destination, {
 				let resolved = false;
 				let validLevel = false;
 				for ( const levelIdentifier of wall.levels ) {
-					if (!validLevel && levelIdentifier in levels) {
+					if (!validLevel && levels.includes(levelIdentifier)) {
 						validLevel = true;
 					}
-					const level = scene.levels.get(levelIdentifier);
-					if ( !level ) continue;
-					resolved = true;
-					const bottom = level.elevation.bottom ?? -Infinity;
-					const top = level.elevation.top ?? Infinity;
-					if ( (bottom <= maxZ) && (top > minZ) ) {
-						spans = true;
-						break;
+					if (!spans || !resolved) {
+						const level = scene.levels.get(levelIdentifier);
+						if ( !level ) continue;
+						resolved = true;
+						if ( (level.elevation.bottom <= maxZ) && (level.elevation.top > minZ) ) {
+							spans = true;
+							break;
+						}
 					}
 				}
 				if ( (!spans || !validLevel) && resolved ) continue;
@@ -74,9 +74,7 @@ export function raycast(scene, origin, destination, {
 					const level = scene.levels.get(leveldentifier);
 					if ( !level ) continue;
 					resolved = true;
-					const bottom = level.elevation.bottom ?? -Infinity;
-					const top = level.elevation.top ?? Infinity;
-					if ( (bottom <= intersection.elevation) && (top > intersection.elevation) ) {
+					if ( (level.elevation.bottom <= intersection.elevation) && (level.elevation.top > intersection.elevation) ) {
 						spans = true;
 						break;
 					}
@@ -85,13 +83,13 @@ export function raycast(scene, origin, destination, {
 			}
 			if ( edge.direction && (edge.direction === edge.orientPoint(origin)) ) continue;
 			if ( edge.threshold && edge.applyThreshold(type, origin) ) continue;
-			if ( mode === "any" ) {
+			if ( mode === 'any' ) {
 				if ( sense !== CONST.EDGE_SENSE_TYPES.LIMITED || limitedForgiven ) return true;
 				limitedForgiven = true;
 			}
 			collisions.push({
 				limited: sense === CONST.EDGE_SENSE_TYPES.LIMITED,
-				type: "wall",
+				type: 'wall',
 				document: wall,
 				t: intersection.t0,
 				point: {
@@ -101,7 +99,7 @@ export function raycast(scene, origin, destination, {
 				}});
 		}
 		// shrink tmax to closest collision
-		if ( mode === "closest" ) {
+		if ( mode === 'closest' ) {
 			let solid = Infinity;
 			let limitedFirst = Infinity;
 			let limitedSecond = Infinity;
@@ -131,7 +129,7 @@ export function raycast(scene, origin, destination, {
 		for ( const level of levels ) {
 			for ( const {region, elevation} of scene.getSurfaces({type, level}) ) {
 				// cheapest checks first
-				if ( side === "above" ) {
+				if ( side === 'above' ) {
 					if ( (elevation < minZ) || (elevation >= maxZ) ) continue;
 				} else {
 					if ( (elevation <= minZ) || (elevation > maxZ) ) continue;
@@ -143,11 +141,11 @@ export function raycast(scene, origin, destination, {
 				if ( seen.has(key) ) continue;
 				const point = {x: origin.x + (dX * t), y: origin.y + (dY * t), elevation};
 				if ( !region.polygonTree.testPoint(point, 0.75) ) continue;
-				if ( mode === "any" ) return true;
+				if ( mode === 'any' ) return true;
 				seen.add(key);
-				collisions.push({type: "surface", t, point, document: region});
+				collisions.push({type: 'surface', t, point, document: region});
 				// shrink tmax to closest collision
-				if ( mode === "closest" ) tMax = Math.min(tMax, t);
+				if ( mode === 'closest' ) tMax = Math.min(tMax, t);
 			}
 		}
 	}
@@ -161,10 +159,10 @@ export function raycast(scene, origin, destination, {
 			continue;
 		}
 		blocking.push(hit);
-		if ( mode !== "all" ) break;
+		if ( mode !== 'all' ) break;
 	}
-	if ( mode === "closest" ) return blocking[0] ?? null;
-	if ( mode === "any" ) return blocking.length > 0;
+	if ( mode === 'closest' ) return blocking[0] ?? null;
+	if ( mode === 'any' ) return blocking.length > 0;
 	return blocking;
 }
 
@@ -595,7 +593,7 @@ export function Region_object_snappingMode(wrapped, self){
 		case 'cone':
 			return CONST.GRID_SNAPPING_MODES.CENTER | CONST.GRID_SNAPPING_MODES.EDGE_MIDPOINT | CONST.GRID_SNAPPING_MODES.VERTEX;
 		case 'line':
-			return CONST.GRID_SNAPPING_MODES.EDGE_MIDPOINT | CONST.GRID_SNAPPING_MODES.CORNER;
+			return CONST.GRID_SNAPPING_MODES.EDGE_MIDPOINT | CONST.GRID_SNAPPING_MODES.VERTEX;
 		default:
 			return wrapped();
 	}
@@ -606,56 +604,79 @@ export function Region_object_getCoveredGridSpaceOffsets(wrapped, self){
 }
 
 export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {}) {
-	if (data.displayMeasurements && data.highlightMode === 'coverage') {
-		// fixup internal cone angle
-		for (let shape of data.shapes) {
-			if (shape.angle === 90 && shape.type === 'cone') {
-				shape.angle = canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-template-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-template-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-template-angle')
-			}
-		}
-		// support rotation with modified pf2e code
+	if (data.highlightMode === 'coverage') {
+		const patchedData = data.shapes
+			? {
+				...data,
+				shapes: data.shapes.map((shape) => {
+					if (shape.type !== 'cone' || shape.angle !== 90) return shape;
+					return {...shape, angle: game.settings.get('f2e-grid-enhancements', `${canvas?.grid?.isHexagonal ? 'hex' : canvas?.grid?.isSquare ? 'square' : 'gridless'}-cone-template-angle`)};
+				})
+			}: data;
+		const patchedOptions = {...options};
 		const placement = { aiming: false };
-		options.onMove = ({ event, position, preview, shape, snap }) => {
+		patchedOptions.onMove = function (...args) {
+			const { event, position, preview, shape, snap, document } = args[0];
 			if (placement.aiming && (shape.type === 'cone' || shape.type === 'line')) {
-				const rotation_angle = shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
-				const angle = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
-				const snapped = event.ctrlKey || event.metaKey || rotation_angle === 0 ? angle : angle.toNearest(rotation_angle);
+				let angle = 5;
+				if (shape.type === 'cone' ) {
+					if (document.parent.grid.isSquare) {
+						angle = game.settings.get('f2e-grid-enhancements', `square-cone-snapping-angle`)
+					} else if (document.parent.grid.isHexagonal) {
+						angle = game.settings.get('f2e-grid-enhancements', `hex-cone-snapping-angle`)
+					} else {
+						angle = game.settings.get('f2e-grid-enhancements', `gridless-cone-snapping-angle`)
+					}
+				}
+				const rotation = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
+				const snapped = event.ctrlKey || event.metaKey || angle === 0 ? rotation : rotation.toNearest(angle);
 				shape.updateSource({ rotation: snapped });
 				return false;
 			}
 			if (snap) {
-				const { x, y } = canvas.grid.getSnappedPoint(position, { mode: preview.snappingMode });
+				const { x, y } = document.parent.grid.getSnappedPoint(position, { mode: preview.snappingMode });
 				position.x = x;
 				position.y = y;
 			}
-			return;
-		}
-		options.onRotate = ({ event, shape }) => {
+			return typeof options.onMove === 'function' ? options.onMove.apply(this, args) : undefined;
+		};
+		patchedOptions.onRotate = function (...args) {
+			const { event, shape, document } = args[0];
 			if (shape.type === 'cone' || shape.type === 'line') {
-				const rotation_angle = shape.type === 'cone' ? canvas?.grid?.isHexagonal ? game.settings.get('f2e-grid-enhancements', 'hex-cone-snapping-angle') : canvas?.grid?.isSquare ? game.settings.get('f2e-grid-enhancements', 'square-cone-snapping-angle') : game.settings.get('f2e-grid-enhancements', 'gridless-cone-snapping-angle') : 5;
-				const step = event.ctrlKey || event.metaKey || rotation_angle === 0 ? 5 : rotation_angle;
-				const delta = step * Math.sign(event.deltaY);
-				const rotation = shape.rotation + delta;
-				shape.updateSource({ rotation: event.ctrlKey || event.metaKey ? rotation : rotation.toNearest(step) });
+				let angle = 5;
+				if (shape.type === 'cone' ) {
+					if (document.parent.grid.isSquare) {
+						angle = game.settings.get('f2e-grid-enhancements', `square-cone-snapping-angle`)
+					} else if (document.parent.grid.isHexagonal) {
+						angle = game.settings.get('f2e-grid-enhancements', `hex-cone-snapping-angle`)
+					} else {
+						angle = game.settings.get('f2e-grid-enhancements', `gridless-cone-snapping-angle`)
+					}
+				}
+				const free = event.ctrlKey || event.metaKey || angle === 0;
+				const step = free ? 1 : angle;
+				const rotation = shape.rotation + step * Math.sign(event.deltaY);
+				shape.updateSource({ rotation: free ? rotation : rotation.toNearest(step) });
 				return false;
 			}
-			return;
+			return typeof options.onRotate === 'function' ? options.onRotate.apply(this, args) : undefined;
 		};
-		options.preConfirm = ({ event, shape }) => {
-			const aim = (shape.type === 'cone' || shape.type === 'line') && !event.shiftKey;
-			if (!placement.aiming && aim) {
+		patchedOptions.preConfirm = function (...args) {
+			const { event, shape } = args[0];
+			if (!placement.aiming && (shape.type === 'cone' || shape.type === 'line') && !event.shiftKey) {
 				placement.aiming = true;
 				return false;
 			}
-			return undefined;
+			return typeof options.preConfirm === 'function' ? options.preConfirm.apply(this, args) : undefined;
 		};
-		options.preSkip = () => {
+		patchedOptions.preSkip = function (...args) {
 			if (placement.aiming) {
 				placement.aiming = false;
 				return false;
 			}
-			return undefined;
+			return typeof options.preSkip === 'function' ? options.preSkip.apply(this, args) : undefined;
 		};
+		return wrapped(patchedData, patchedOptions);
 	}
 	return wrapped(data, options);
 }
@@ -749,10 +770,10 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	const source_token_usable_center_point_map = new Map();
 	const target_token_usable_center_point_map = new Map();
 	for (const collision_type of collision_types) {
-		const source_token_usable_center_point = raycast(self.token.object.scene, source_token_center_bottom_point, source_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? {...source_token_center_top_point};
+		const source_token_usable_center_point = raycast(self.token.object.scene, source_token_center_bottom_point, source_token_center_top_point, {side: 'below', mode: 'closest', type: collision_type})?.point ?? {...source_token_center_top_point};
 		source_token_usable_center_point.elevation = (source_token_usable_center_point.elevation + source_token_center_bottom_point.elevation) / 2;
 		source_token_usable_center_point_map.set(collision_type, source_token_usable_center_point);
-		const target_token_usable_center_point = raycast(self.token.object.scene, target_token_center_bottom_point, target_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? {...target_token_center_top_point};
+		const target_token_usable_center_point = raycast(self.token.object.scene, target_token_center_bottom_point, target_token_center_top_point, {side: 'below', mode: 'closest', type: collision_type})?.point ?? {...target_token_center_top_point};
 		target_token_usable_center_point.elevation = (target_token_usable_center_point.elevation + target_token_center_bottom_point.elevation) / 2;
 		target_token_usable_center_point_map.set(collision_type, target_token_usable_center_point);
 	}
@@ -770,7 +791,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 			const target_token_usable_center_point = target_token_usable_center_point_map.get(collision_type);
 			const source_token_usable_center_point = source_token_usable_center_point_map.get(collision_type);
 			let constrained_target_token_shell_point = target_token_shell_point;
-			const collision = raycast(self.token.object.scene, target_token_usable_center_point, constrained_target_token_shell_point, {mode: "closest", type: collision_type});
+			const collision = raycast(self.token.object.scene, target_token_usable_center_point, constrained_target_token_shell_point, {mode: 'closest', type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
 					x: collision.point.x + (target_token_usable_center_point.x - collision.point.x) * 0.1,
@@ -778,7 +799,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 					elevation: collision.point.elevation + (target_token_usable_center_point.elevation - collision.point.elevation) * 0.1
 				};
 			}
-			if (!raycast(self.token.object.scene, source_token_usable_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
+			if (!raycast(self.token.object.scene, source_token_usable_center_point, constrained_target_token_shell_point, {mode: 'any', type: collision_type})) {
 				return true;
 			}
 		}
@@ -866,7 +887,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		const token_center = tokenCenterBottom(self.token);
 		const collision_radius = self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size;
 		// get levels to add wall collisions from
-		let levels = [self.token.document.scene.levels.get(self.token.document.level)];
+		let levels = [self.token.document.scene.levels.get(self.token.document.level)].filter(item => item !== undefined);
 		levels = levels.length ? levels : self.token.document.scene.levels.contents.filter((level) => token_center.elevation >= level.elevation.bottom && token_center.elevation < level.elevation.top);
 		levels = levels.length ? levels : [null];
 		// create clipper points
