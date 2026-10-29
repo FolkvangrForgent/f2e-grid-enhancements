@@ -19,7 +19,7 @@ export function raycast(scene, origin, destination, {
 	const dY = destination.y - origin.y;
 	const dZ = destination.elevation - origin.elevation;
 	// determine side
-	side ??= dZ >= 0 ? "above" : "below";
+	side ??= dZ <= 0 ? "above" : "below";
 	// calculate min and max for Z
 	const minZ = Math.min(origin.elevation, destination.elevation);
 	const maxZ = Math.max(origin.elevation, destination.elevation);
@@ -745,12 +745,12 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	const source_token_usable_center_point_map = new Map();
 	const target_token_usable_center_point_map = new Map();
 	for (const collision_type of collision_types) {
-		const source_token_usable_center_point = raycast(self.token.object.scene, source_token_center_bottom_point, source_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? source_token_center_top_point;
+		const source_token_usable_center_point = raycast(self.token.object.scene, source_token_center_bottom_point, source_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? {...source_token_center_top_point};
 		source_token_usable_center_point.elevation = (source_token_usable_center_point.elevation + source_token_center_bottom_point.elevation) / 2;
-		source_token_usable_center_point_map[collision_type] = source_token_usable_center_point;
-		const target_token_usable_center_point = raycast(self.token.object.scene, target_token_center_bottom_point, target_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? target_token_center_top_point;
+		source_token_usable_center_point_map.set(collision_type, source_token_usable_center_point);
+		const target_token_usable_center_point = raycast(self.token.object.scene, target_token_center_bottom_point, target_token_center_top_point, {side: "below", mode: "closest", type: collision_type})?.point ?? {...target_token_center_top_point};
 		target_token_usable_center_point.elevation = (target_token_usable_center_point.elevation + target_token_center_bottom_point.elevation) / 2;
-		target_token_usable_center_point_map[collision_type] = target_token_usable_center_point;
+		target_token_usable_center_point_map.set(collision_type, target_token_usable_center_point);
 	}
 	// get shell points and randomize them
 	const target_token_shell_points = tokenShell(token.object);
@@ -763,16 +763,18 @@ export function Aura_token_containsToken(wrapped, self, token) {
 	// do center point to shell tests for line of effect
 	for (const target_token_shell_point of target_token_shell_points) {
 		for (const collision_type of collision_types) {
+			const target_token_usable_center_point = target_token_usable_center_point_map.get(collision_type);
+			const source_token_usable_center_point = source_token_usable_center_point_map.get(collision_type);
 			let constrained_target_token_shell_point = target_token_shell_point;
-			const collision = raycast(self.token.object.scene, target_token_usable_center_point_map[collision_type], constrained_target_token_shell_point, {mode: "closest", type: collision_type});
+			const collision = raycast(self.token.object.scene, target_token_usable_center_point, constrained_target_token_shell_point, {mode: "closest", type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
-					x: collision.point.x + (target_token_usable_center_point_map[collision_type].x - collision.point.x) * 0.1,
-					y: collision.point.y + (target_token_usable_center_point_map[collision_type].y - collision.point.y) * 0.1,
-					elevation: collision.point.elevation + (target_token_usable_center_point_map[collision_type].elevation - collision.point.elevation) * 0.1
+					x: collision.point.x + (target_token_usable_center_point.x - collision.point.x) * 0.1,
+					y: collision.point.y + (target_token_usable_center_point.y - collision.point.y) * 0.1,
+					elevation: collision.point.elevation + (target_token_usable_center_point.elevation - collision.point.elevation) * 0.1
 				};
 			}
-			if (!raycast(self.token.object.scene, source_token_usable_center_point_map[collision_type], constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
+			if (!raycast(self.token.object.scene, source_token_usable_center_point, constrained_target_token_shell_point, {mode: "any", type: collision_type})) {
 				return true;
 			}
 		}
