@@ -27,11 +27,7 @@ function patch_function(target_function_name) {
 			return wrapped(...args);
 		}
 	}, 'MIXED');
-	if (grid[base] !== undefined) {
-		console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched');
-	} else {
-		console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' unpatched');
-	}
+	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + (grid[base] !== undefined ? ' patched' : ' unpatched'));
 }
 
 async function review() {
@@ -58,13 +54,7 @@ Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom Reach enforcement support
 	patch_function('CONFIG.F2e.Token.object._onClickLeft2');
 	// Fix for shapes and timing issue when wrapping functions
-	if (game.ready) {
-		review();
-	} else {
-		Hooks.once('ready', async function () {
-			review();
-		});
-	}
+	game.ready ? review() : Hooks.once('ready', review);
 });
 
 Hooks.once('init', () => {
@@ -238,27 +228,18 @@ Hooks.on('getSceneControlButtons', (controls) => {
 		return;
 	}
 	// get and set cone angle from settings
-	try {
-		if (canvas?.grid?.isGridless) {
-			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'gridless-cone-template-angle');
-		} else if (canvas?.grid?.isHexagonal) {
-			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'hex-cone-template-angle');
-		} else if (canvas?.grid?.isSquare) {
-			controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', 'square-cone-template-angle');
-		} else {
-			controls.regions.tools.cone.shapeData.angle = CONFIG.MeasuredTemplate.defaults.angle;
-		}
-	} catch { }
+	controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', `${canvas.grid.isHexagonal ? 'hex' : canvas.grid.isSquare ? 'square' : 'gridless'}-cone-template-angle`);
+	const point = canvas.grid.isHexagonal ? 'hex' : canvas.grid.isSquare ? 'square' : 'point';
 	controls.regions.tools.point = {
 		name: 'point',
 		order: 8,
 		creation: true,
 		control: !canvas.regions?.templateMode,
 		shapeData: {type: 'circle', x: 0, y: 0, radius: 0},
-		title: canvas.grid.isHexagonal ? 'f2e-grid-enhancements.region.hex' : canvas.grid.isSquare ? 'f2e-grid-enhancements.region.square' : 'f2e-grid-enhancements.region.point',
-		icon: canvas.grid.isHexagonal ? 'fa-solid fa-hexagon' : canvas.grid.isSquare ? 'fa-solid fa-square' : 'fa-solid fa-circle',
+		title: `f2e-grid-enhancements.region.${point}`,
+		icon: {hex: 'fa-solid fa-hexagon', square: 'fa-solid fa-square', point: 'fa-solid fa-circle'}[point],
 		toolclip: {
-			heading: canvas.grid.isHexagonal ? 'f2e-grid-enhancements.region.hex' : canvas.grid.isSquare ? 'f2e-grid-enhancements.region.square' : 'f2e-grid-enhancements.region.point',
+			heading: `f2e-grid-enhancements.region.${point}`,
 			items: foundry.applications.ui.SceneControls.buildToolclipItems([
 				!canvas.regions?.templateMode ? {paragraph: 'CONTROLS.RegionShape'} : '',
 				'draw',
@@ -293,7 +274,5 @@ const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 			aura_patcher(Object.getPrototypeOf(aura), Object.getPrototypeOf(document_aura));
 			Hooks.off('refreshToken', aura_finding_hook);
 		}
-	} else {
-		return;
 	}
 });
