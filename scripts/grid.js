@@ -603,7 +603,7 @@ export function Region_object_getCoveredGridSpaceOffsets(wrapped, self){
 	return wrapped();
 }
 
-export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {}) {
+export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 	if (data.highlightMode === 'coverage') {
 		const patchedData = data.shapes
 			? {
@@ -676,13 +676,13 @@ export function Region_layerFoundry_placeRegion(wrapped, self, data, options = {
 			}
 			return typeof options.preSkip === 'function' ? options.preSkip.apply(this, args) : undefined;
 		};
-		return wrapped(patchedData, patchedOptions);
+		return CONFIG.F2e.functions.placeRegion.call(self, patchedData, patchedOptions);
 	}
-	return wrapped(data, options);
+	return CONFIG.F2e.functions.placeRegion.call(self, data, options);
 }
 
-export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
-	wrapped(event);
+export function Region_layer__onDragLeftMove(wrapped, self, event) {
+	CONFIG.F2e.functions._onDragLeftMove.call(self, event)
 	if (event.interactionData.shape?.type === 'circle' && ui.controls.tool?.name === 'point') {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
@@ -697,12 +697,12 @@ export function Region_layerFoundry__onDragLeftMove(wrapped, self, event) {
 				angle = game.settings.get('f2e-grid-enhancements', `gridless-cone-snapping-angle`)
 			}
 		}
-		if (!(event.ctrlKey || event.metaKey || angle === 0)) {
-			const rotation = event.interactionData.shape.rotation.toNearest(angle);
-			if (rotation !== event.interactionData.shape.rotation) {
-				event.interactionData.shape.updateSource({rotation});
-				self._updateDragPreview(event);
-			}
+		const pointer = event.getLocalPosition(self);
+		const raw_rotation = Math.toDegrees(Math.atan2(pointer.y - event.interactionData.shape.y, pointer.x - event.interactionData.shape.x));
+		const rotation = event.ctrlKey || event.metaKey || angle === 0 ? raw_rotation : raw_rotation.toNearest(angle);
+		if (rotation !== event.interactionData.shape.rotation) {
+			event.interactionData.shape.updateSource({rotation});
+			self._updateDragPreview(event);
 		}
 	}
 }

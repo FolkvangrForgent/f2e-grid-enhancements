@@ -9,7 +9,11 @@ CONFIG.F2e = {
 	},
 	Region: {
 		object: CONFIG.Region.objectClass.prototype,
-		layerFoundry: foundry.canvas.layers.RegionLayer.prototype,
+		layer: CONFIG.Region.layerClass.prototype,
+	},
+	functions: {
+		placeRegion: foundry.canvas.layers.RegionLayer.prototype.placeRegion,
+		_onDragLeftMove: foundry.canvas.layers.RegionLayer.prototype._onDragLeftMove,
 	}
 }
 
@@ -42,13 +46,13 @@ Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom distance to measurement for 3D support
 	patch_function('CONFIG.F2e.Token.object.distanceTo');
 	// [ hex & square & gridless ] Custom chat template placement
-	patch_function('CONFIG.F2e.Region.layerFoundry.placeRegion');
+	patch_function('CONFIG.F2e.Region.layer.placeRegion');
 	// [ hex & square & gridless ] Custom chat template snap point
 	patch_function('CONFIG.F2e.Region.object.snappingMode');
 	// [ hex & square ] Rules accurate lines
 	patch_function('CONFIG.F2e.Region.object._getCoveredGridSpaceOffsets');
 	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
-	patch_function('CONFIG.F2e.Region.layerFoundry._onDragLeftMove');
+	patch_function('CONFIG.F2e.Region.layer._onDragLeftMove');
 	// [ hex & square & gridless ] Custom flanking
 	patch_function('CONFIG.F2e.Token.object.onOppositeSides');
 	// [ hex & square & gridless ] Custom Reach enforcement support
