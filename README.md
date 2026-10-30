@@ -17,6 +17,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 - Regions
     - `point` region that is a single grid unit increment
     - `cone` internal angle and template mode snapping angle can be configured
+    - `line` in template mode selects a correct number of spaces for non wide lines
 - Settings
     - (GM) `cone` internal angle can be configured for all grid types
     - (GM) `cone` snapping angle can be configured for all grid types

@@ -115,6 +115,24 @@ Hooks.once('init', () => {
 		type: new foundry.data.fields.BooleanField(),
 		default: true
 	});
+	game.settings.register('f2e-grid-enhancements', 'line-region-padding', {
+		name: 'f2e-grid-enhancements.setting.line-region-padding-name',
+		hint: 'f2e-grid-enhancements.setting.line-region-padding-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false,
+		requiresReload: true
+	});
+	game.settings.register('f2e-grid-enhancements', 'line-region-rectilinear-corners', {
+		name: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners-name',
+		hint: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners-hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: false,
+		requiresReload: true
+	});
 	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
 		name: 'f2e-grid-enhancements.setting.default-grid-type-name',
 		hint: 'f2e-grid-enhancements.setting.default-grid-type-hint',
