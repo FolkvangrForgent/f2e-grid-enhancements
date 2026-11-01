@@ -477,6 +477,10 @@ function tokenAuraOffsetPolygons(token, radius, hole) {
 	}
 }
 
+function tokenDefeated(token) {
+	return !!(token.document?.combatant?.isDefeated || token_document?.actor?.statuses?.has(CONFIG.specialStatusEffects.DEFEATED));
+}
+
 function traitsCollisionTypes(traits) {
 	const collision_types = [];
 	if (traits.includes('auditory')) {
@@ -803,6 +807,11 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		self.border.visible = false;
 		return;
 	}
+	// handle defeated creatures
+	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token)) {
+		self.border.visible = false;
+		return;
+	}
 	// clear initial border
 	if ((self.radius !== self.border_radius || self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height)) {
 		self.border_radius = self.radius
@@ -833,6 +842,10 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 export function Aura_token_containsToken(wrapped, self, token) {
 	// If either token is hidden or not rendered, return false early
 	if (self.token.hidden || token.hidden || !self.token.object || !token.object) {
+		return false;
+	}
+	// handle defeated creatures
+	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token.object)) {
 		return false;
 	}
 	// If the token is the one emitting the aura, return true early
@@ -968,6 +981,10 @@ export function Aura_renderer_highlight(wrapped, self) {
 	// ensure layer for highlight exists
 	const layer = canvas.interface.grid.highlightLayers[self.highlightLayer.name];
 	if ( !layer ) {
+		return;
+	}
+	// handle defeated creatures
+	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token)) {
 		return;
 	}
 	// get token polygons

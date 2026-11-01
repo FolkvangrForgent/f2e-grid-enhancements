@@ -23,7 +23,7 @@
 				"type": "system",
 				"compatibility": {
 					"minimum": "8.2.0",
-					"verified": "8.5.1"
+					"verified": "8.6.1"
 				}
 			},
 			{
@@ -31,7 +31,7 @@
 				"type": "system",
 				"compatibility": {
 					"minimum": "1.2.0",
-					"verified": "1.5.1"
+					"verified": "1.6.1"
 				}
 			}
 		],
@@ -61,28 +61,28 @@
 			"path": "languages/pl.json"
 		}
 	],
-  "packs": [
-    {
-      "name": "off-guard-toggle-pf2e",
-      "label": "Off Guard Toggle",
-      "path": "packs/off-guard-toggle-pf2e",
-      "type": "Item",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      },
-      "system": "pf2e"
-    },
-    {
-      "name": "off-guard-toggle-sf2e",
-      "label": "Off Guard Toggle",
-      "path": "packs/off-guard-toggle-sf2e",
-      "type": "Item",
-      "ownership": {
-        "PLAYER": "OBSERVER",
-        "ASSISTANT": "OWNER"
-      },
-      "system": "sf2e"
-    }
-  ]
+	"packs": [
+		{
+			"name": "off-guard-toggle-pf2e",
+			"label": "Off Guard Toggle",
+			"path": "packs/off-guard-toggle-pf2e",
+			"type": "Item",
+			"ownership": {
+				"PLAYER": "OBSERVER",
+				"ASSISTANT": "OWNER"
+			},
+			"system": "pf2e"
+		},
+		{
+			"name": "off-guard-toggle-sf2e",
+			"label": "Off Guard Toggle",
+			"path": "packs/off-guard-toggle-sf2e",
+			"type": "Item",
+			"ownership": {
+				"PLAYER": "OBSERVER",
+				"ASSISTANT": "OWNER"
+			},
+			"system": "sf2e"
+		}
+	]
 }

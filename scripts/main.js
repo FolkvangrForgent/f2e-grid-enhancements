@@ -9,7 +9,7 @@ CONFIG.F2e = {
 	},
 	Region: {
 		object: CONFIG.Region.objectClass.prototype,
-		layer: CONFIG.Region.layerClass.prototype,
+		layer: CONFIG.Canvas.layers.regions.layerClass.prototype,
 	},
 	functions: {
 		placeRegion: foundry.canvas.layers.RegionLayer.prototype.placeRegion,
@@ -60,64 +60,72 @@ Hooks.once('libWrapper.Ready', () => {
 Hooks.once('init', () => {
 	// setup settings
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-template-angle', {
-		name: 'f2e-grid-enhancements.setting.hex-cone-template-angle-name',
-		hint: 'f2e-grid-enhancements.setting.hex-cone-template-angle-hint',
+		name: 'f2e-grid-enhancements.setting.hex-cone-template-angle.name',
+		hint: 'f2e-grid-enhancements.setting.hex-cone-template-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 60
 	});
 	game.settings.register('f2e-grid-enhancements', 'square-cone-template-angle', {
-		name: 'f2e-grid-enhancements.setting.square-cone-template-angle-name',
-		hint: 'f2e-grid-enhancements.setting.square-cone-template-angle-hint',
+		name: 'f2e-grid-enhancements.setting.square-cone-template-angle.name',
+		hint: 'f2e-grid-enhancements.setting.square-cone-template-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'gridless-cone-template-angle', {
-		name: 'f2e-grid-enhancements.setting.gridless-cone-template-angle-name',
-		hint: 'f2e-grid-enhancements.setting.gridless-cone-template-angle-hint',
+		name: 'f2e-grid-enhancements.setting.gridless-cone-template-angle.name',
+		hint: 'f2e-grid-enhancements.setting.gridless-cone-template-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 5, max: 360, step: 5}),
 		default: 90
 	});
 	game.settings.register('f2e-grid-enhancements', 'hex-cone-snapping-angle', {
-		name: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle-name',
-		hint: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle-hint',
+		name: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle.name',
+		hint: 'f2e-grid-enhancements.setting.hex-cone-snapping-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 30
 	});
 	game.settings.register('f2e-grid-enhancements', 'square-cone-snapping-angle', {
-		name: 'f2e-grid-enhancements.setting.square-cone-snapping-angle-name',
-		hint: 'f2e-grid-enhancements.setting.square-cone-snapping-angle-hint',
+		name: 'f2e-grid-enhancements.setting.square-cone-snapping-angle.name',
+		hint: 'f2e-grid-enhancements.setting.square-cone-snapping-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 45
 	});
 	game.settings.register('f2e-grid-enhancements', 'gridless-cone-snapping-angle', {
-		name: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle-name',
-		hint: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle-hint',
+		name: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle.name',
+		hint: 'f2e-grid-enhancements.setting.gridless-cone-snapping-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 15
 	});
 	game.settings.register('f2e-grid-enhancements', 'aura-collisions-highlight', {
-		name: 'f2e-grid-enhancements.setting.aura-collisions-highlight-name',
-		hint: 'f2e-grid-enhancements.setting.aura-collisions-highlight-hint',
+		name: 'f2e-grid-enhancements.setting.aura-collisions-highlight.name',
+		hint: 'f2e-grid-enhancements.setting.aura-collisions-highlight.hint',
+		scope: 'world',
+		config: true,
+		type: new foundry.data.fields.BooleanField(),
+		default: true
+	});
+	game.settings.register('f2e-grid-enhancements', 'aura-defeated-disable', {
+		name: 'f2e-grid-enhancements.setting.aura-defeated-disable.name',
+		hint: 'f2e-grid-enhancements.setting.aura-defeated-disable.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
 		default: true
 	});
 	game.settings.register('f2e-grid-enhancements', 'line-region-padding', {
-		name: 'f2e-grid-enhancements.setting.line-region-padding-name',
-		hint: 'f2e-grid-enhancements.setting.line-region-padding-hint',
+		name: 'f2e-grid-enhancements.setting.line-region-padding.name',
+		hint: 'f2e-grid-enhancements.setting.line-region-padding.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
@@ -125,8 +133,8 @@ Hooks.once('init', () => {
 		requiresReload: true
 	});
 	game.settings.register('f2e-grid-enhancements', 'line-region-rectilinear-corners', {
-		name: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners-name',
-		hint: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners-hint',
+		name: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners.name',
+		hint: 'f2e-grid-enhancements.setting.line-region-rectilinear-corners.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
@@ -134,8 +142,8 @@ Hooks.once('init', () => {
 		requiresReload: true
 	});
 	game.settings.register('f2e-grid-enhancements', 'default-grid-type', {
-		name: 'f2e-grid-enhancements.setting.default-grid-type-name',
-		hint: 'f2e-grid-enhancements.setting.default-grid-type-hint',
+		name: 'f2e-grid-enhancements.setting.default-grid-type.name',
+		hint: 'f2e-grid-enhancements.setting.default-grid-type.hint',
 		scope: 'world',
 		config: true,
 		type: Number,
@@ -150,56 +158,56 @@ Hooks.once('init', () => {
 		default: 1
 	});
 	game.settings.register('f2e-grid-enhancements', 'default-top-elevation', {
-		name: 'f2e-grid-enhancements.setting.default-top-elevation-name',
-		hint: 'f2e-grid-enhancements.setting.default-top-elevation-hint',
+		name: 'f2e-grid-enhancements.setting.default-top-elevation.name',
+		hint: 'f2e-grid-enhancements.setting.default-top-elevation.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: true}),
 		default: null
 	});
 	game.settings.register('f2e-grid-enhancements', 'default-bottom-elevation', {
-		name: 'f2e-grid-enhancements.setting.default-bottom-elevation-name',
-		hint: 'f2e-grid-enhancements.setting.default-bottom-elevation-hint',
+		name: 'f2e-grid-enhancements.setting.default-bottom-elevation.name',
+		hint: 'f2e-grid-enhancements.setting.default-bottom-elevation.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: true}),
 		default: null
 	});
 	game.settings.register('f2e-grid-enhancements', 'reach-exception', {
-		name: 'f2e-grid-enhancements.setting.reach-exception-name',
-		hint: 'f2e-grid-enhancements.setting.reach-exception-hint',
+		name: 'f2e-grid-enhancements.setting.reach-exception.name',
+		hint: 'f2e-grid-enhancements.setting.reach-exception.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
 		default: true
 	});
 	game.settings.register('f2e-grid-enhancements', 'flanking-angle', {
-		name: 'f2e-grid-enhancements.setting.flanking-angle-name',
-		hint: 'f2e-grid-enhancements.setting.flanking-angle-hint',
+		name: 'f2e-grid-enhancements.setting.flanking-angle.name',
+		hint: 'f2e-grid-enhancements.setting.flanking-angle.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.NumberField({nullable: false, min: 0, max: 360, step: 5}),
 		default: 135
 	});
 	game.settings.register('f2e-grid-enhancements', 'flanking-gridless-override', {
-		name: 'f2e-grid-enhancements.setting.flanking-gridless-override-name',
-		hint: 'f2e-grid-enhancements.setting.flanking-gridless-override-hint',
+		name: 'f2e-grid-enhancements.setting.flanking-gridless-override.name',
+		hint: 'f2e-grid-enhancements.setting.flanking-gridless-override.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
 		default: false
 	});
 	game.settings.register('f2e-grid-enhancements', 'flanking-hex-override', {
-		name: 'f2e-grid-enhancements.setting.flanking-hex-override-name',
-		hint: 'f2e-grid-enhancements.setting.flanking-hex-override-hint',
+		name: 'f2e-grid-enhancements.setting.flanking-hex-override.name',
+		hint: 'f2e-grid-enhancements.setting.flanking-hex-override.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
 		default: false
 	});
 	game.settings.register('f2e-grid-enhancements', 'flanking-square-override', {
-		name: 'f2e-grid-enhancements.setting.flanking-square-override-name',
-		hint: 'f2e-grid-enhancements.setting.flanking-square-override-hint',
+		name: 'f2e-grid-enhancements.setting.flanking-square-override.name',
+		hint: 'f2e-grid-enhancements.setting.flanking-square-override.hint',
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),

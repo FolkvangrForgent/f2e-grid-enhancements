@@ -26,6 +26,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
     - (GM) New scene default level bottom elevation
     - (GM) Default reach exception toggle
     - (GM) Aura highlight wall collision toggle
+    - (GM) Disable auras on defeated creatures
     - [experimental] (GM) Flanking logic overrides and related setting
 - Areas
     - Snapping
