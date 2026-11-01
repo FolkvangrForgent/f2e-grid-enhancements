@@ -302,3 +302,48 @@ const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 		}
 	}
 });
+
+// refresh auras when defeated disable is enabled
+const aura_defeated_refresh = foundry.utils.debounce(async () => {
+	if (!canvas?.ready || canvas.loading) return;
+	for (const token_document of scene.tokens) {
+		if (!token_document.auras?.size) continue;
+		token_document.object?.renderFlags.set({redraw: true});
+		for (const aura of token_document.auras.values()) {
+			await aura.notifyActors();
+		}
+	}
+	// remove removeOnExit effects from actors: logic from `checkAreaEffects` helper
+	for (const actor of new Set(canvas.scene.tokens.map((token_document) => token_document.actor).filter(Boolean))) {
+		if (actor.primaryUpdater !== game.user || actor.isOfType('party')) continue;
+		const actor_tokens = actor.getActiveTokens(true, true);
+		const expired = [];
+		for (const effect of actor.itemTypes.effect) {
+			const aura_data = effect.flags?.[game.system.id]?.aura;
+			if (!aura_data?.removeOnExit) continue;
+			const aura_actor = await fromUuid(aura_data.origin);
+			const aura = aura_actor?.getActiveTokens(true, true)[0]?.auras.get(aura_data.slug);
+			const still_applies = aura_actor?.auras.get(aura_data.slug)?.effects.some((e) => e.uuid === effect.sourceId);
+			if (!still_applies || !actor_tokens.some((token_document) => aura?.containsToken(token_document))) {
+				expired.push(effect.id);
+			}
+		}
+		if (expired.length > 0) {
+			await actor.deleteEmbeddedDocuments('Item', expired);
+		}
+	}
+}, 100);
+
+// refresh auras when defeated disable is enabled
+Hooks.on('createActiveEffect', (effect) => {
+	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable')) {
+		aura_defeated_refresh();
+	}
+});
+
+// refresh auras when defeated disable is enabled
+Hooks.on('deleteActiveEffect', (effect) => {
+	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable')) {
+		aura_defeated_refresh();
+	}
+});
