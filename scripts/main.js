@@ -29,8 +29,10 @@ function patch_function(target_function_name) {
 				return wrapped(...args);
 			}
 		}, 'MIXED');
+		console.info(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' patched');
+	} else {
+		console.warn(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' unpatched');
 	}
-	console.info(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + (grid[base] !== undefined ? ' patched' : ' unpatched'));
 }
 
 async function review() {
