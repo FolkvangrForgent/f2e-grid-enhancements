@@ -478,7 +478,7 @@ function tokenAuraOffsetPolygons(token, radius, hole) {
 }
 
 function tokenDefeated(token) {
-	return !!(token.document?.combatant?.isDefeated || token_document?.actor?.statuses?.has(CONFIG.specialStatusEffects.DEFEATED));
+	return !!(token.document?.combatant?.isDefeated || token.document?.actor?.statuses?.has(CONFIG.specialStatusEffects.DEFEATED));
 }
 
 function traitsCollisionTypes(traits) {
