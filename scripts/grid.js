@@ -259,27 +259,42 @@ function tokenShell(token) {
 		const top = bottom + depth * token.document.scene.grid.distance;
 		for (const offset of tokenOffsets(token, true)) {
 			const point = token.document.scene.grid.getCenterPoint(offset);
-			push({x: point.x, y: point.y, top});
-			push({x: point.x, y: point.y, bottom});
+			push({x: point.x, y: point.y, elevation: top});
+			push({x: point.x, y: point.y, elevation: bottom});
 			for (const adjacent_offset of token.document.scene.grid.getAdjacentOffsets(offset)) {
 				const adjacent_point = token.document.scene.grid.getCenterPoint(adjacent_offset);
-				push({x: (point.x * 3 + adjacent_point.x) / 4, y: (point.y * 3 + adjacent_point.y) / 4, top});
-				push({x: (point.x * 3 + adjacent_point.x) / 4, y: (point.y * 3 + adjacent_point.y) / 4, bottom});
-				push({x: (point.x + adjacent_point.x) / 2, y: (point.y + adjacent_point.y) / 2, top});
-				push({x: (point.x + adjacent_point.x) / 2, y: (point.y + adjacent_point.y) / 2, bottom});
+				push({x: (point.x * 3 + adjacent_point.x) / 4, y: (point.y * 3 + adjacent_point.y) / 4, elevation: top});
+				push({x: (point.x * 3 + adjacent_point.x) / 4, y: (point.y * 3 + adjacent_point.y) / 4, elevation: bottom});
+				push({x: (point.x + adjacent_point.x) / 2, y: (point.y + adjacent_point.y) / 2, elevation: top});
+				push({x: (point.x + adjacent_point.x) / 2, y: (point.y + adjacent_point.y) / 2, elevation: bottom});
 			}
 			for (const grid_point of token.document.scene.grid.getVertices(offset)) {
-				push({x: grid_point.x, y: grid_point.y, top});
-				push({x: grid_point.x, y: grid_point.y, bottom});
+				push({x: grid_point.x, y: grid_point.y, elevation: top});
+				push({x: grid_point.x, y: grid_point.y, elevation: bottom});
 			}
 		}
 		return Array.from(shell_points.values());
 	} else {
-		const shell_points = [];
-		const width = Math.round(token.document.width * 2) / 2;
-		const height = Math.round(token.document.height * 2) / 2;
-		const depth = Math.round(token.document.depth * 2) / 2;
+		// axes under half a cell collapse to a single sample at the token's center
+		const flat_x = Math.round(token.document.width * 2) / 2 < 0.5;
+		const flat_y = Math.round(token.document.height * 2) / 2 < 0.5;
+		const flat_z = Math.round(token.document.depth * 2) / 2 < 0.5;
+		const width = flat_x ? 0 : Math.round(token.document.width * 2) / 2;
+		const height = flat_y ? 0 : Math.round(token.document.height * 2) / 2;
+		const depth = flat_z ? 0 : Math.round(token.document.depth * 2) / 2;
+		// center offsets (in grid units) from the snapped top left origin
+		const center_x = (flat_x ? token.document.width : width) / 2;
+		const center_y = (flat_y ? token.document.height : height) / 2;
+		const center_z = (flat_z ? token.document.depth : depth) / 2;
 		const origin = token.document.scene.grid.getTopLeftPoint({x: token.document.x, y: token.document.y, elevation: token.document.elevation});
+		const shell_points = [];
+		if (flat_x && flat_y && flat_z) {
+			return [{
+				x: origin.x + center_x * token.document.scene.grid.size,
+				y: origin.y + center_y * token.document.scene.grid.size,
+				elevation: origin.elevation + center_z * token.document.scene.grid.distance
+			}];
+		}
 		if ([CONST.TOKEN_SHAPES.ELLIPSE_1, CONST.TOKEN_SHAPES.ELLIPSE_2].includes(tokenShape(token))) {
 			// fibonacci lattice sphere point spread (using the same number of points that square uses)
 			const steps_x = width * 2;
@@ -289,21 +304,23 @@ function tokenShell(token) {
 			const radius_x = width / 2;
 			const radius_y = height / 2;
 			const radius_z = depth / 2;
-			const center_x = origin.x + radius_x * token.document.scene.grid.size;
-			const center_y = origin.y + radius_y * token.document.scene.grid.size;
-			const center_elevation = origin.elevation + radius_z * token.document.scene.grid.distance;
-
+			const origin_x = origin.x + center_x * token.document.scene.grid.size;
+			const origin_y = origin.y + center_y * token.document.scene.grid.size;
+			const origin_elevation = origin.elevation + center_z * token.document.scene.grid.distance;
 			for (let index = 0; index < count; index++) {
-				const unit_z = 1 - 2 * index / (count - 1);
+				const unit_z = count > 1 ? 1 - 2 * index / (count - 1) : 0;
 				const unit_radius = Math.sqrt(Math.max(0, 1 - unit_z * unit_z));
 				const theta = index * PHI;
 				shell_points.push({
-					x: center_x + radius_x * unit_radius * Math.cos(theta) * token.document.scene.grid.size,
-					y: center_y + radius_y * unit_radius * Math.sin(theta) * token.document.scene.grid.size,
-					elevation: center_elevation + radius_z * unit_z * token.document.scene.grid.distance
+					x: origin_x + radius_x * unit_radius * Math.cos(theta) * token.document.scene.grid.size,
+					y: origin_y + radius_y * unit_radius * Math.sin(theta) * token.document.scene.grid.size,
+					elevation: origin_elevation + radius_z * unit_z * token.document.scene.grid.distance
 				});
 			}
 		} else if ([CONST.TOKEN_SHAPES.RECTANGLE_1, CONST.TOKEN_SHAPES.RECTANGLE_2].includes(tokenShape(token))) {
+			const base_x = origin.x + (flat_x ? center_x * token.document.scene.grid.size : 0);
+			const base_y = origin.y + (flat_y ? center_y * token.document.scene.grid.size : 0);
+			const base_elevation = origin.elevation + (flat_z ? center_z * token.document.scene.grid.distance : 0);
 			for (let x = 0; x <= width; x += 0.5) {
 				for (let y = 0; y <= height; y += 0.5) {
 					for (let z = 0; z <= depth; z += 0.5) {
@@ -311,9 +328,9 @@ function tokenShell(token) {
 							continue;
 						}
 						shell_points.push({
-							x: origin.x + x * token.document.scene.grid.size,
-							y: origin.y + y * token.document.scene.grid.size,
-							elevation: origin.elevation + z * token.document.scene.grid.distance
+							x: base_x + x * token.document.scene.grid.size,
+							y: base_y + y * token.document.scene.grid.size,
+							elevation: base_elevation + z * token.document.scene.grid.distance
 						});
 					}
 				}
