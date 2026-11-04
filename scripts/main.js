@@ -21,7 +21,8 @@ function patchFunction(target_function_name) {
 			try {
 				return grid[base](wrapped, this, ...args);
 			} catch (error) {
-				console.error(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' errored\n' + error);
+				console.error(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' errored');
+				console.error(error);
 				return wrapped(...args);
 			}
 		}, 'MIXED');

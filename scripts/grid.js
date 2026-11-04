@@ -819,7 +819,7 @@ export function Scene_document_canHaveAuras(wrapped, self) {
 }
 
 export function Aura_renderer_draw(wrapped, self, showBorder) {
-	// If the token is GM hidden or if this grid isn't ft, don't render anything
+	// If the token is GM hidden, don't render anything
 	if (self.token.document.hidden && !self.token.visible) {
 		self.border.visible = false;
 		return;
