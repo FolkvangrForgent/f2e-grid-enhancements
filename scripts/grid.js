@@ -126,7 +126,8 @@ export function raycast(scene, origin, destination, {
 		).normalize().pad(1);
 		const seen = new Set();
 		for ( const level of levels ) {
-			for ( const {region, elevation} of scene.getSurfaces({type, level}) ) {
+			for ( const surface of scene.getSurfaces({type, level}) ) {
+				const {region, elevation, key} = surface;
 				// cheapest checks first
 				if ( side === 'above' ) {
 					if ( (elevation < minZ) || (elevation >= maxZ) ) continue;
@@ -136,7 +137,6 @@ export function raycast(scene, origin, destination, {
 				const t = (elevation - origin.elevation) / dZ;
 				if ( !(t >= tMin && t <= tMax) ) continue;
 				if ( !region.bounds.intersects(bounds) ) continue;
-				const key = `${region.id}|${elevation}`;
 				if ( seen.has(key) ) continue;
 				const point = {x: origin.x + (dX * t), y: origin.y + (dY * t), elevation};
 				if ( !region.polygonTree.testPoint(point, 0.75) ) continue;
@@ -792,13 +792,13 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 			}
 			return typeof options.preSkip === 'function' ? options.preSkip.apply(this, args) : undefined;
 		};
-		return CONFIG.F2e.functions.placeRegion.call(self, patchedData, patchedOptions);
+		return foundry.canvas.layers.RegionLayer.prototype.placeRegion.call(self, patchedData, patchedOptions);
 	}
-	return CONFIG.F2e.functions.placeRegion.call(self, data, options);
+	return foundry.canvas.layers.RegionLayer.prototype.placeRegion.call(self, data, options);
 }
 
 export function Region_layer__onDragLeftMove(wrapped, self, event) {
-	CONFIG.F2e.functions._onDragLeftMove.call(self, event)
+	foundry.canvas.layers.RegionLayer.prototype._onDragLeftMove.call(self, event);
 	if (event.interactionData.shape?.type === 'circle' && ui.controls.tool?.name === 'point') {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
@@ -807,7 +807,7 @@ export function Region_layer__onDragLeftMove(wrapped, self, event) {
 		const pointer = event.getLocalPosition(self);
 		const raw_rotation = Math.toDegrees(Math.atan2(pointer.y - event.interactionData.shape.y, pointer.x - event.interactionData.shape.x));
 		const rotation = event.ctrlKey || event.metaKey || angle === 0 ? raw_rotation : raw_rotation.toNearest(angle);
-		if (rotation !== event.interactionData.shape.rotation) {
+		if (Math.abs(((((rotation - event.interactionData.shape.rotation) + 180) % 360) + 360) % 360 - 180) >= 1e-6) {
 			event.interactionData.shape.updateSource({rotation});
 			self._updateDragPreview(event);
 		}
