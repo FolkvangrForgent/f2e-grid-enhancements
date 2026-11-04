@@ -20,14 +20,17 @@ CONFIG.F2e = {
 function patch_function(target_function_name) {
 	const split = target_function_name.split('.');
 	const base = split[2] + '_' + split[3] + '_' + split[4];
-	libWrapper.register('f2e-grid-enhancements', target_function_name, function(wrapped, ...args) {
-		if (grid[base] !== undefined) {
-			return grid[base](wrapped, this, ...args);
-		} else {
-			return wrapped(...args);
-		}
-	}, 'MIXED');
-	console.debug(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + (grid[base] !== undefined ? ' patched' : ' unpatched'));
+	if (grid[base] !== undefined) {
+		libWrapper.register('f2e-grid-enhancements', target_function_name, function(wrapped, ...args) {
+			try {
+				return grid[base](wrapped, this, ...args);
+			} catch (error) {
+				console.error(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + ' errored\n' + error);
+				return wrapped(...args);
+			}
+		}, 'MIXED');
+	}
+	console.info(game.i18n.localize('f2e-grid-enhancements.name') + ' | ' + target_function_name + (grid[base] !== undefined ? ' patched' : ' unpatched'));
 }
 
 async function review() {
