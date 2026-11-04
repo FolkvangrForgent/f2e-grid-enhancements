@@ -121,7 +121,8 @@ Hooks.once('init', () => {
 		scope: 'world',
 		config: true,
 		type: new foundry.data.fields.BooleanField(),
-		default: true
+		default: true,
+		onChange: () => aura_defeated_refresh()
 	});
 	game.settings.register('f2e-grid-enhancements', 'line-region-padding', {
 		name: 'f2e-grid-enhancements.setting.line-region-padding.name',
@@ -305,8 +306,8 @@ const aura_finding_hook = Hooks.on('refreshToken', (token, event) => {
 
 // refresh auras when defeated disable is enabled
 const aura_defeated_refresh = foundry.utils.debounce(async () => {
-	if (!canvas?.ready || canvas.loading) return;
-	for (const token_document of scene.tokens) {
+if (!canvas?.ready || canvas.loading || !canvas.scene) return;
+	for (const token_document of canvas.scene.tokens) {
 		if (!token_document.auras?.size) continue;
 		token_document.object?.renderFlags.set({redraw: true});
 		for (const aura of token_document.auras.values()) {
