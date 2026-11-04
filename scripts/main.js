@@ -50,7 +50,8 @@ function refreshTokens() {
 let refreshAurasRunning = false;
 let refreshAurasPending = false;
 const refreshAuras = foundry.utils.debounce(async () => {
-	if (!canvas?.ready || canvas.loading || !canvas.scene) return;
+	if (deferCallback(refreshAuras)) return;
+	if (!canvas.scene) return;
 	if (refreshAurasRunning) {
 		refreshAurasPending = true;
 		return;
