@@ -1,169 +1,7 @@
-const PHI = Math.PI * (3 - Math.sqrt(5));
+import * as raycast from './raycast.js';
+import * as setting from './setting.js';
 
-export function raycast(scene, origin, destination, {
-	tMin = 0, tMax = 1,  walls = true, surfaces = true,
-	type = 'move', mode = 'any', side, levels} = {}
-) {
-	// clamp t values (tMin, tMax]
-	tMin = Math.max(0, tMin);
-	tMax = Math.min(1, tMax);
-	// ensure t values are valid
-	if ( tMin > tMax ) {
-		if ( mode === 'closest' ) return null;
-		if ( mode === 'any' ) return false;
-		return [];
-	}
-	// calculate deltas
-	const dX = destination.x - origin.x;
-	const dY = destination.y - origin.y;
-	const dZ = destination.elevation - origin.elevation;
-	// determine side
-	side ??= dZ <= 0 ? 'above' : 'below';
-	// calculate min and max for Z
-	const minZ = Math.min(origin.elevation, destination.elevation);
-	const maxZ = Math.max(origin.elevation, destination.elevation);
-	// calculate levels that are in range
-	levels ??= scene.levels.filter(level => (level.elevation.top >= minZ) && (level.elevation.bottom <= maxZ)).map(level => level.id);
-	// find all collisions
-	const collisions = [];
-	// walls
-	if ( walls && (dX || dY) ) {
-		// calculate min and max for X and Y
-		const minX = Math.min(origin.x, destination.x);
-		const maxX = Math.max(origin.x, destination.x);
-		const minY = Math.min(origin.y, destination.y);
-		const maxY = Math.max(origin.y, destination.y);
-		// forgive first limited wall when any mode
-		let limitedForgiven = false;
-		// loop through every wall
-		for ( const wall of scene.walls ) {
-			// cheapest checks first
-			if ( wall.isDoor && wall.isOpen ) continue;
-			const edge = wall.edge;
-			const sense = edge?.[type];
-			if ( !sense ) continue;
-			if ( ((edge.a.x < minX) && (edge.b.x < minX)) || ((edge.a.x > maxX) && (edge.b.x > maxX)) || ((edge.a.y < minY) && (edge.b.y < minY)) || ((edge.a.y > maxY) && (edge.b.y > maxY)) ) continue;
-			if ( wall.levels?.size ) {
-				let spans = false;
-				let resolved = false;
-				let validLevel = false;
-				for ( const levelIdentifier of wall.levels ) {
-					if (!validLevel && levels.includes(levelIdentifier)) {
-						validLevel = true;
-					}
-					if (!spans || !resolved) {
-						const level = scene.levels.get(levelIdentifier);
-						if ( !level ) continue;
-						resolved = true;
-						if ( (level.elevation.bottom <= maxZ) && (level.elevation.top > minZ) ) {
-							spans = true;
-							break;
-						}
-					}
-				}
-				if ( (!spans || !validLevel) && resolved ) continue;
-			}
-			const intersection = foundry.utils.lineSegmentIntersection(origin, destination, edge.a, edge.b);
-			if ( !intersection || (intersection.t0 <= tMin) || (intersection.t0 > tMax) ) continue;
-			intersection.elevation = origin.elevation + (intersection.t0 * dZ);
-			if ( dZ && wall.levels?.size ) {
-				let spans = false;
-				let resolved = false;
-				for ( const levelIdentifier of wall.levels ) {
-					const level = scene.levels.get(levelIdentifier);
-					if ( !level ) continue;
-					resolved = true;
-					if ( (level.elevation.bottom <= intersection.elevation) && (level.elevation.top > intersection.elevation) ) {
-						spans = true;
-						break;
-					}
-				}
-				if ( !spans && resolved ) continue;
-			}
-			if ( edge.direction && (edge.direction === edge.orientPoint(origin)) ) continue;
-			if ( edge.threshold && edge.applyThreshold(type, origin) ) continue;
-			if ( mode === 'any' ) {
-				if ( sense !== CONST.EDGE_SENSE_TYPES.LIMITED || limitedForgiven ) return true;
-				limitedForgiven = true;
-			}
-			collisions.push({
-				limited: sense === CONST.EDGE_SENSE_TYPES.LIMITED,
-				type: 'wall',
-				document: wall,
-				t: intersection.t0,
-				point: {
-					x: intersection.x,
-					y: intersection.y,
-					elevation: intersection.elevation
-				}});
-		}
-		// shrink tMax to closest collision
-		if ( mode === 'closest' ) {
-			let solid = Infinity;
-			let limitedFirst = Infinity;
-			let limitedSecond = Infinity;
-			for ( const hit of collisions ) {
-				if ( !hit.limited ) {
-					if ( hit.t < solid ) solid = hit.t;
-				} else if ( hit.t < limitedFirst ) {
-					limitedSecond = limitedFirst;
-					limitedFirst = hit.t;
-				} else if ( hit.t < limitedSecond ) {
-					limitedSecond = hit.t;
-				}
-			}
-			tMax = Math.min(tMax, solid, limitedSecond);
-		}
-	}
-	// surfaces
-	if ( surfaces && dZ ) {
-		// calculate bounds for optimization
-		const bounds = new PIXI.Rectangle(
-			origin.x + (dX * tMin),
-			origin.y + (dY * tMin),
-			dX * (tMax - tMin),
-			dY * (tMax - tMin)
-		).normalize().pad(1);
-		const seen = new Set();
-		for ( const level of levels ) {
-			for ( const surface of scene.getSurfaces({type, level}) ) {
-				const {region, elevation, key} = surface;
-				// cheapest checks first
-				if ( side === 'above' ) {
-					if ( (elevation < minZ) || (elevation >= maxZ) ) continue;
-				} else {
-					if ( (elevation <= minZ) || (elevation > maxZ) ) continue;
-				}
-				const t = (elevation - origin.elevation) / dZ;
-				if ( !(t >= tMin && t <= tMax) ) continue;
-				if ( !region.bounds.intersects(bounds) ) continue;
-				if ( seen.has(key) ) continue;
-				const point = {x: origin.x + (dX * t), y: origin.y + (dY * t), elevation};
-				if ( !region.polygonTree.testPoint(point, 0.75) ) continue;
-				if ( mode === 'any' ) return true;
-				seen.add(key);
-				collisions.push({type: 'surface', t, point, document: region});
-				// shrink tMax to closest collision
-				if ( mode === 'closest' ) tMax = Math.min(tMax, t);
-			}
-		}
-	}
-	// sort collisions and process limited
-	collisions.sort((h1, h2) => h1.t - h2.t);
-	const blocking = [];
-	let limitedSeen = false;
-	for ( const hit of collisions ) {
-		if ( hit.limited && !limitedSeen ) {
-			limitedSeen = true;
-			continue;
-		}
-		blocking.push(hit);
-		if ( mode !== 'all' ) break;
-	}
-	if ( mode === 'closest' ) return blocking[0] ?? null;
-	if ( mode === 'any' ) return blocking.length > 0;
-	return blocking;
-}
+const PHI = Math.PI * (3 - Math.sqrt(5));
 
 function tokenOffsets(token, flat) {
 	// heavily modified logic from core getOccupiedGridSpaceOffsets to remove collisions and allow flat offsets without k
@@ -194,15 +32,13 @@ function tokenOffsets(token, flat) {
 				offsets.push({i: i_min + di, j: j_min + dj});
 			} else {
 				for ( let k = k_min; k < k_max; k++ ) {
-					const offset = {i: i_min + di, j: j_min + dj, k};
-					offsets.push(offset);
+					offsets.push({i: i_min + di, j: j_min + dj, k});
 				}
 			}
 		}
 	}
 	return offsets;
 }
-
 
 function tokenCenterBottom(token) {
 	return token.document.getCenterPoint()
@@ -529,7 +365,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 	}
 	// determine if we should discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid
 	let discount = false;
-	if (game.settings.get('f2e-grid-enhancements', 'reach-exception') && self.scene.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(self.scene.grid.diagonals) && opts?.reach === 10 && self.scene.grid.distance === 5 && ['', 'ft', 'feet'].includes(self.scene.grid.units.toLowerCase())) {
+	if (setting.get('reach-exception') && self.scene.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(self.scene.grid.diagonals) && opts?.reach === 10 && self.scene.grid.distance === 5 && ['', 'ft', 'feet'].includes(self.scene.grid.units.toLowerCase())) {
 		discount = true;
 	}
 	// calculate distance
@@ -608,7 +444,7 @@ export function Region_object__getCoveredGridSpaceOffsets(wrapped, self) {
 		const step_x = d_x / d_max;
 		const step_y = d_y / d_max;
 		const steps = Math.ceil(length) + 1;
-		const insert_corners = self.scene.grid.diagonals === CONST.GRID_DIAGONALS.ILLEGAL || self.scene.grid.diagonals === CONST.GRID_DIAGONALS.RECTILINEAR && game.settings.get('f2e-grid-enhancements', 'line-region-rectilinear-corners');
+		const insert_corners = self.scene.grid.diagonals === CONST.GRID_DIAGONALS.ILLEGAL || self.scene.grid.diagonals === CONST.GRID_DIAGONALS.RECTILINEAR && setting.get('line-region-rectilinear-corners');
 		// cost tracking
 		let cost = 1;
 		let diagonals = 0;
@@ -683,7 +519,7 @@ export function Region_object__getCoveredGridSpaceOffsets(wrapped, self) {
 			previous_point = point;
 		}
 		// check if adding extra straight offsets is valid
-		if (game.settings.get('f2e-grid-enhancements', 'line-region-padding')) {
+		if (setting.get('line-region-padding')) {
 			let d_i = 0;
 			let d_j = 0;
 			if (Math.abs(d_y) > Math.abs(d_x)) {
@@ -744,7 +580,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 				...data,
 				shapes: data.shapes.map((shape) => {
 					if (shape.type !== 'cone' || shape.angle !== 90) return shape;
-					return {...shape, angle: game.settings.get('f2e-grid-enhancements', `${canvas?.grid?.isHexagonal ? 'hex' : canvas?.grid?.isSquare ? 'square' : 'gridless'}-cone-template-angle`)};
+					return {...shape, angle: setting.get(`${canvas?.grid?.isHexagonal ? 'hex' : canvas?.grid?.isSquare ? 'square' : 'gridless'}-cone-template-angle`)};
 				})
 			}: data;
 		const patchedOptions = {...options};
@@ -752,7 +588,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 		patchedOptions.onMove = function (...args) {
 			const { event, position, preview, shape, snap, document } = args[0];
 			if (placement.aiming && (shape.type === 'cone' || shape.type === 'line')) {
-				const angle = shape.type === 'cone' ? game.settings.get('f2e-grid-enhancements', `${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+				const angle = shape.type === 'cone' ? setting.get(`${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
 				const rotation = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
 				const snapped = event.ctrlKey || event.metaKey || angle === 0 ? rotation : rotation.toNearest(angle);
 				shape.updateSource({ rotation: snapped });
@@ -768,7 +604,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 		patchedOptions.onRotate = function (...args) {
 			const { event, shape, document } = args[0];
 			if (shape.type === 'cone' || shape.type === 'line') {
-				const angle = shape.type === 'cone' ? game.settings.get('f2e-grid-enhancements', `${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+				const angle = shape.type === 'cone' ? setting.get(`${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
 				const free = event.ctrlKey || event.metaKey || angle === 0;
 				const step = free ? 1 : angle;
 				const rotation = shape.rotation + step * Math.sign(event.deltaY);
@@ -803,7 +639,7 @@ export function Region_layer__onDragLeftMove(wrapped, self, event) {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
 	} else if (self.templateMode && (event.interactionData.shape?.type === 'line' || event.interactionData.shape?.type === 'cone')) {
-		const angle = event.interactionData.shape.type === 'cone' ? game.settings.get('f2e-grid-enhancements', `${canvas.scene.grid.isHexagonal ? 'hex' : canvas.scene.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+		const angle = event.interactionData.shape.type === 'cone' ? setting.get(`${canvas.scene.grid.isHexagonal ? 'hex' : canvas.scene.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
 		const pointer = event.getLocalPosition(self);
 		const raw_rotation = Math.toDegrees(Math.atan2(pointer.y - event.interactionData.shape.y, pointer.x - event.interactionData.shape.x));
 		const rotation = event.ctrlKey || event.metaKey || angle === 0 ? raw_rotation : raw_rotation.toNearest(angle);
@@ -825,7 +661,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		return;
 	}
 	// handle defeated creatures
-	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token)) {
+	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token)) {
 		self.border.visible = false;
 		return;
 	}
@@ -862,7 +698,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		return false;
 	}
 	// handle defeated creatures
-	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token.object)) {
+	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token.object)) {
 		return false;
 	}
 	// If the token is the one emitting the aura, return true early
@@ -892,7 +728,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		const center_bottom_point = tokenCenterBottom(token_object);
 		const usable_center_point_map = new Map();
 		for (const collision_type of collision_types) {
-			const usable_center_point = raycast(self.token.object.scene, center_bottom_point, center_top_point, {side: 'below', mode: 'closest', type: collision_type})?.point ?? {...center_top_point};
+			const usable_center_point = raycast.raycast(self.token.object.scene, center_bottom_point, center_top_point, {side: 'below', mode: 'closest', type: collision_type})?.point ?? {...center_top_point};
 			usable_center_point.elevation = (usable_center_point.elevation + center_bottom_point.elevation) / 2;
 			usable_center_point_map.set(collision_type, usable_center_point);
 		}
@@ -912,7 +748,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 			const target_token_usable_center_point = target_token_usable_center_point_map.get(collision_type);
 			const source_token_usable_center_point = source_token_usable_center_point_map.get(collision_type);
 			let constrained_target_token_shell_point = target_token_shell_point;
-			const collision = raycast(self.token.object.scene, target_token_usable_center_point, constrained_target_token_shell_point, {mode: 'closest', type: collision_type});
+			const collision = raycast.raycast(self.token.object.scene, target_token_usable_center_point, constrained_target_token_shell_point, {mode: 'closest', type: collision_type});
 			if (collision !== null) {
 				constrained_target_token_shell_point = {
 					x: collision.point.x + (target_token_usable_center_point.x - collision.point.x) * 0.1,
@@ -920,7 +756,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 					elevation: collision.point.elevation + (target_token_usable_center_point.elevation - collision.point.elevation) * 0.1
 				};
 			}
-			if (!raycast(self.token.object.scene, source_token_usable_center_point, constrained_target_token_shell_point, {mode: 'any', type: collision_type})) {
+			if (!raycast.raycast(self.token.object.scene, source_token_usable_center_point, constrained_target_token_shell_point, {mode: 'any', type: collision_type})) {
 				return true;
 			}
 		}
@@ -929,7 +765,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 }
 
 export function Token_object_onOppositeSides(wrapped, self, flanker, other, flankee) {
-	if (!game.settings.get('f2e-grid-enhancements', `flanking-${flankee.document.scene.grid.isHexagonal ? 'hex' : flankee.document.scene.grid.isSquare ? 'square' : 'gridless'}-override`)) {
+	if (!setting.get(`flanking-${flankee.document.scene.grid.isHexagonal ? 'hex' : flankee.document.scene.grid.isSquare ? 'square' : 'gridless'}-override`)) {
 		return wrapped(flanker, other, flankee)
 	}
 	// flanker data
@@ -978,7 +814,7 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	vector_1_x = vector_1_x / vector_1_magnitude;
 	vector_1_y = vector_1_y / vector_1_magnitude;
 	vector_1_z = vector_1_z / vector_1_magnitude;
-	const flanking_threshold = Math.PI - game.settings.get('f2e-grid-enhancements', 'flanking-angle') / 360 * Math.PI;
+	const flanking_threshold = Math.PI - setting.get('flanking-angle') / 360 * Math.PI;
 	for (const point of points) {
 		let vector_0_x = point.x - flankee_x;
 		let vector_0_y = point.y - flankee_y;
@@ -1001,7 +837,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		return;
 	}
 	// handle defeated creatures
-	if (game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable') && tokenDefeated(self.token)) {
+	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token)) {
 		return;
 	}
 	// get token polygons
@@ -1010,7 +846,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		return;
 	}
 	// draw polygons
-	if (game.settings.get('f2e-grid-enhancements', 'aura-collisions-highlight')) {
+	if (setting.get('aura-collisions-highlight')) {
 		const token_center = tokenCenterBottom(self.token);
 		const collision_radius = self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size;
 		// get levels to add wall collisions from

@@ -1,4 +1,7 @@
 import * as grid from './grid.js';
+import * as raycast from './raycast.js';
+import * as refresh from './refresh.js';
+import * as setting from './setting.js';
 
 CONFIG.F2e = {
 	Token: {
@@ -32,84 +35,6 @@ function patchFunction(target_function_name) {
 	}
 }
 
-function refreshRegions() {
-	if (deferCallback(refreshRegions)) return;
-	for (const region of canvas.regions?.placeables ?? []) {
-		region.renderFlags.set({redraw: true});
-	}
-}
-
-function refreshTokens() {
-	if (deferCallback(refreshTokens)) return;
-	for (const token of canvas.tokens?.placeables ?? []) {
-		if (token.document.auras?.size) {
-			token.renderFlags.set({redraw: true});
-		}
-	}
-}
-
-let refreshAurasRunning = false;
-let refreshAurasPending = false;
-const refreshAuras = foundry.utils.debounce(async () => {
-	if (deferCallback(refreshAuras)) return;
-	if (!canvas.scene) return;
-	if (refreshAurasRunning) {
-		refreshAurasPending = true;
-		return;
-	} else {
-		refreshAurasRunning = true;
-	}
-	try {
-		for (const tokenDocument of canvas.scene.tokens) {
-			if (!tokenDocument.auras?.size) continue;
-			tokenDocument.object?.renderFlags.set({redraw: true});
-			for (const aura of tokenDocument.auras.values()) {
-				await aura.notifyActors();
-			}
-		}
-		// remove removeOnExit effects from actors: logic from `checkAreaEffects` helper
-		for (const actor of new Set(canvas.scene.tokens.map((tokenDocument) => tokenDocument.actor).filter(Boolean))) {
-			if (actor.primaryUpdater !== game.user || actor.isOfType('party')) continue;
-			const actorTokens = actor.getActiveTokens(true, true);
-			const expired = [];
-			for (const effect of actor.itemTypes.effect) {
-				const auraData = effect.flags?.[game.system.id]?.aura;
-				if (!auraData?.removeOnExit) continue;
-				const aura_actor = await fromUuid(auraData.origin);
-				const aura = aura_actor?.getActiveTokens(true, true)[0]?.auras.get(auraData.slug);
-				const still_applies = aura_actor?.auras.get(auraData.slug)?.effects.some((e) => e.uuid === effect.sourceId);
-				if (!still_applies || !actorTokens.some((tokenDocument) => aura?.containsToken(tokenDocument))) {
-					expired.push(effect.id);
-				}
-			}
-			if (expired.length > 0) {
-				await actor.deleteEmbeddedDocuments('Item', expired);
-			}
-		}
-	} finally {
-		refreshAurasRunning = false;
-		if (refreshAurasPending) {
-			refreshAurasPending = false;
-			refreshAuras();
-		}
-	}
-}, 100);
-
-const deferCallbacks = new Set();
-function deferCallback(callback) {
-	if (canvas?.ready && !canvas.loading) {
-		return false;
-	}
-	if (!deferCallbacks.has(callback)) {
-		deferCallbacks.add(callback);
-		Hooks.once('canvasReady', () => {
-			deferCallbacks.delete(callback);
-			callback();
-		});
-	}
-	return true;
-}
-
 Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom distance to measurement for 3D support
 	patchFunction('CONFIG.F2e.Token.object.distanceTo');
@@ -126,41 +51,28 @@ Hooks.once('libWrapper.Ready', () => {
 	// [ hex & square & gridless ] Custom Reach enforcement support
 	patchFunction('CONFIG.F2e.Token.object._onClickLeft2');
 	// Refresh regions created before wrapping
-	game.ready ? refreshRegions() : Hooks.once('ready', refreshRegions);
+	refresh.regions();
 });
-
-function registerSetting(key, type, value, extra = {}) {
-	game.settings.register('f2e-grid-enhancements', key, {
-		name: `f2e-grid-enhancements.setting.${key}.name`,
-		hint: `f2e-grid-enhancements.setting.${key}.hint`,
-		scope: 'world',
-		config: true,
-		type,
-		default: value,
-		...extra
-	});
-}
-
-const angleField = (min) => new foundry.data.fields.NumberField({nullable: false, min, max: 360, step: 5});
-const booleanField = () => new foundry.data.fields.BooleanField();
-const nullableNumberField = () => new foundry.data.fields.NumberField({nullable: true});
 
 Hooks.once('init', () => {
 	// setup settings
-	registerSetting('hex-cone-template-angle', angleField(5), 60, {requiresReload: true});
-	registerSetting('square-cone-template-angle', angleField(5), 90, {requiresReload: true});
-	registerSetting('gridless-cone-template-angle', angleField(5), 90, {requiresReload: true});
-	registerSetting('hex-cone-snapping-angle', angleField(0), 30);
-	registerSetting('square-cone-snapping-angle', angleField(0), 45);
-	registerSetting('gridless-cone-snapping-angle', angleField(0), 15);
-	registerSetting('aura-collisions-highlight', booleanField(), true, {onChange: () => refreshTokens()});
-	registerSetting('aura-defeated-disable', booleanField(), true, {onChange: () => refreshAuras()});
-	registerSetting('line-region-padding', booleanField(), false, {onChange: () => refreshRegions()});
-	registerSetting('line-region-rectilinear-corners', booleanField(), false, {onChange: () => refreshRegions()});
-	registerSetting('reach-exception', booleanField(), true);
-	registerSetting('default-top-elevation', nullableNumberField(), null);
-	registerSetting('default-bottom-elevation', nullableNumberField(), null);
-	registerSetting('default-grid-type', Number, 1, {
+	const angleField = (min) => new foundry.data.fields.NumberField({nullable: false, min, max: 360, step: 5});
+	const booleanField = () => new foundry.data.fields.BooleanField();
+	const nullableNumberField = () => new foundry.data.fields.NumberField({nullable: true});
+	setting.register('hex-cone-template-angle', angleField(5), 60, {requiresReload: true});
+	setting.register('square-cone-template-angle', angleField(5), 90, {requiresReload: true});
+	setting.register('gridless-cone-template-angle', angleField(5), 90, {requiresReload: true});
+	setting.register('hex-cone-snapping-angle', angleField(0), 30);
+	setting.register('square-cone-snapping-angle', angleField(0), 45);
+	setting.register('gridless-cone-snapping-angle', angleField(0), 15);
+	setting.register('aura-collisions-highlight', booleanField(), true, {onChange: () => refresh.tokens()});
+	setting.register('aura-defeated-disable', booleanField(), true, {onChange: () => refresh.auras()});
+	setting.register('line-region-padding', booleanField(), false, {onChange: () => refresh.regions()});
+	setting.register('line-region-rectilinear-corners', booleanField(), false, {onChange: () => refresh.regions()});
+	setting.register('reach-exception', booleanField(), true);
+	setting.register('default-top-elevation', nullableNumberField(), null);
+	setting.register('default-bottom-elevation', nullableNumberField(), null);
+	setting.register('default-grid-type', Number, 1, {
 		choices: {
 			0: 'SCENE.GridGridless',
 			1: 'SCENE.GridSquare',
@@ -170,12 +82,12 @@ Hooks.once('init', () => {
 			5: 'SCENE.GridHexEvenQ'
 		}
 	});
-	registerSetting('flanking-angle', angleField(0), 135);
-	registerSetting('flanking-gridless-override', booleanField(), false);
-	registerSetting('flanking-hex-override', booleanField(), false);
-	registerSetting('flanking-square-override', booleanField(), false);
+	setting.register('flanking-angle', angleField(0), 135);
+	setting.register('flanking-gridless-override', booleanField(), false);
+	setting.register('flanking-hex-override', booleanField(), false);
+	setting.register('flanking-square-override', booleanField(), false);
 	// expose api
-	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: grid.raycast});
+	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: raycast.raycast});
 });
 
 // setup new scene having unbounded elevations
@@ -183,12 +95,12 @@ Hooks.on("preCreateScene", (scene, data, options, userId) => {
 	if (game.user.id !== userId) return;
 	const updates = {};
 	if (data.grid?.type === undefined) {
-		updates['grid.type'] = game.settings.get('f2e-grid-enhancements', 'default-grid-type');
+		updates['grid.type'] = setting.get('default-grid-type');
 	}
 	if (!data.levels?.length) {
 		const elevation = {
-			bottom: game.settings.get('f2e-grid-enhancements', 'default-bottom-elevation'),
-			top: game.settings.get('f2e-grid-enhancements', 'default-top-elevation')
+			bottom: setting.get('default-bottom-elevation'),
+			top: setting.get('default-top-elevation')
 		};
 		const existing = scene.toObject().levels ?? [];
 		if (existing.length) {
@@ -214,7 +126,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
 		return;
 	}
 	// get and set cone angle from settings
-	controls.regions.tools.cone.shapeData.angle = game.settings.get('f2e-grid-enhancements', `${canvas.grid.isHexagonal ? 'hex' : canvas.grid.isSquare ? 'square' : 'gridless'}-cone-template-angle`);
+	controls.regions.tools.cone.shapeData.angle = setting.get(`${canvas.grid.isHexagonal ? 'hex' : canvas.grid.isSquare ? 'square' : 'gridless'}-cone-template-angle`);
 	const point = canvas.grid.isHexagonal ? 'hex' : canvas.grid.isSquare ? 'square' : 'point';
 	controls.regions.tools.point = {
 		name: 'point',
@@ -249,7 +161,7 @@ const auraPatcher = foundry.utils.debounce((AuraRenderer, TokenAura) => {
 	// [ hex & square & gridless ] Aura enable
 	patchFunction('CONFIG.F2e.Scene.document.canHaveAuras');
 	// refresh auras now that they are patched
-	refreshTokens();
+	refresh.tokens();
 }, 100);
 
 const auraFinderHook = Hooks.on('refreshToken', (token, event) => {
@@ -265,14 +177,14 @@ const auraFinderHook = Hooks.on('refreshToken', (token, event) => {
 
 // refresh auras when defeated disable is enabled
 Hooks.on('createActiveEffect', (effect) => {
-	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable')) {
-		refreshAuras();
+	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && setting.get('aura-defeated-disable')) {
+		refresh.auras();
 	}
 });
 
 // refresh auras when defeated disable is enabled
 Hooks.on('deleteActiveEffect', (effect) => {
-	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && game.settings.get('f2e-grid-enhancements', 'aura-defeated-disable')) {
-		refreshAuras();
+	if (effect.statuses.has(CONFIG.specialStatusEffects.DEFEATED) && setting.get('aura-defeated-disable')) {
+		refresh.auras();
 	}
 });
