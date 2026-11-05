@@ -386,7 +386,7 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 }
 
 export function Token_object__onClickLeft2(wrapped, self, event) {
-	const requiresReach = game.pf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses');
+	const requiresReach = game.pf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses') ?? game.sf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses');
 	if (!self.document.isSecret && requiresReach && !self.document.isOwner && self.actor?.isLootableBy(game.user)) {
 		const inReach = [...new Set([self.layer.controlled, game.user.character?.getActiveTokens(true, false) ?? []].flat())].some(
 			(token) =>
