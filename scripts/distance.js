@@ -179,7 +179,7 @@ function hexDistance(grid, objectA, objectZ, discount) {
 function gridlessDistance(grid, objectA, objectZ) {
 	const scale = grid.distance / grid.size;
 	const [volumeA, volumeZ] = [objectA, objectZ].map((object) => {
-		if (object instanceof CONFIG.Token.objectClass) {
+		if (object instanceof foundry.canvas.placeables.Token) {
 			const signature = `${object.document.x}|${object.document.y}|${object.document.elevation}|${object.document.width}|${object.document.height}|${object.document.depth}|${object.document.shape}`;
 			let volume = getVolume(object, grid, signature);
 			if (!volume) {

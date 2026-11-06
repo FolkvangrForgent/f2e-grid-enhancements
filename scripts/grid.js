@@ -355,6 +355,9 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 			return path.distance;
 		}
 	}
+	if (!(target instanceof foundry.canvas.placeables.Token)) {
+		target = {...tokenCenterCenter(self), ...target};
+	}
 	return Math.max(0, Math.round(distance.distance(self.scene.grid, self, target, discountFunction) * 10) / 10);
 }
 
