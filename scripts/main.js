@@ -1,3 +1,4 @@
+import * as distance from './distance.js';
 import * as grid from './grid.js';
 import * as raycast from './raycast.js';
 import * as refresh from './refresh.js';
@@ -87,7 +88,7 @@ Hooks.once('init', () => {
 	setting.register('flanking-hex-override', booleanField(), false);
 	setting.register('flanking-square-override', booleanField(), false);
 	// expose api
-	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: raycast.raycast});
+	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: raycast.raycast, distance: distance.distance});
 });
 
 // setup new scene having unbounded elevations

@@ -61,7 +61,7 @@
 			},
 			"reach-exception": {
 				"name": "Default Reach Exception",
-				"hint": "Use the 10 foot reach exception on square grids as called out in the rules."
+				"hint": "Use the 10 foot reach exception as called out in the rules on square and hex grids."
 			},
 			"flanking-angle": {
 				"name": "[Experimental] Custom Flanking Angle",

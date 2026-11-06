@@ -1,3 +1,4 @@
+import * as distance from './distance.js';
 import * as raycast from './raycast.js';
 import * as setting from './setting.js';
 
@@ -195,13 +196,6 @@ function tokenShape(token) {
 	return CONST.TOKEN_SHAPES.RECTANGLE_1;
 }
 
-function tokenPoints(token) {
-	if (token.document.scene.grid.isGridless) {
-		return tokenShell(token);
-	}
-	return tokenOffsets(token, false).map((offset) => token.document.scene.grid.getCenterPoint(offset));
-}
-
 function tokenAuraOffsetHelper(token, radius, hole) {
 	if (token.document.scene.grid.isGridless) {
 		return [];
@@ -349,40 +343,19 @@ function traitsCollisionTypes(traits) {
 }
 
 export function Token_object_distanceTo(wrapped, self, target, opts) {
-	// if target is self distance will always be 0
-	if (self === target) return 0;
-	// calculate self points
-	const self_points = tokenPoints(self);
-	// calculate target points
-	let target_points = []
-	if (target instanceof CONFIG.Token.objectClass) {
-		if (self.scene !== target.scene) {
-			return Infinity;
-		}
-		target_points = tokenPoints(target);
-	} else {
-		target_points = [self.scene.grid.getCenterPoint({x: target.x, y: target.y, elevation: target.elevation ?? self.document.elevation})];
-	}
-	// determine if we should discount 5 ft after the second diagonal for 10 ft reach on a 5 ft grid
-	let discount = false;
-	if (setting.get('reach-exception') && self.scene.grid.isSquare && [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(self.scene.grid.diagonals) && opts?.reach === 10 && self.scene.grid.distance === 5 && ['', 'ft', 'feet'].includes(self.scene.grid.units.toLowerCase())) {
-		discount = true;
-	}
-	// calculate distance
-	let distance = Infinity;
-	for (const self_point of self_points) {
-		for (const target_point of target_points) {
-			const pathCandidate = self.scene.grid.measurePath([self_point, target_point]);
-			if (discount && pathCandidate.segments[0]?.diagonals > 1) {
-				pathCandidate.distance -= self.scene.grid.distance;
+	let discountFunction = undefined;
+	if (opts?.reach === 10 && setting.get('reach-exception')) {
+		discountFunction = (grid, path) => {
+			if (grid.distance === 5
+				&& path.diagonals > 1
+				&& [CONST.GRID_DIAGONALS.ALTERNATING_1, CONST.GRID_DIAGONALS.ALTERNATING_2].includes(grid.diagonals)
+				&& ['', 'ft', 'feet'].includes((grid.units ?? '').toLowerCase())) {
+					return path.distance - grid.distance;
 			}
-			if (pathCandidate.distance < distance) {
-				distance = pathCandidate.distance;
-			}
+			return path.distance;
 		}
 	}
-	// round distance to nearest tenth
-	return Math.max(0, Math.round(distance * 10) / 10);
+	return Math.max(0, Math.round(distance.distance(self.scene.grid, self, target, discountFunction) * 10) / 10);
 }
 
 export function Token_object__onClickLeft2(wrapped, self, event) {

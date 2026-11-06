@@ -2,7 +2,7 @@
 ![Latest Release Download Count](https://img.shields.io/github/downloads/FolkvangrForgent/f2e-grid-enhancements/latest/module.zip)
 ![Forge Installs](https://img.shields.io/badge/dynamic/json?label=Forge%20Installs&query=package.installs&suffix=%25&url=https%3A%2F%2Fforge-vtt.com%2Fapi%2Fbazaar%2Fpackage%2Ff2e-grid-enhancements&colorB=4aa94a)
 
-> **AI Disclaimer** - This module was coded by a human but AI was used to review the code for bugs.
+> **AI Disclaimer** - AI is used to review the code for bugs. This module was mostly coded by a human (`gridlessGJKDistance` and it's functions were written by AI for girdless ellipsoid distance support).
 
 # PF2e & SF2e - Grid Enhancements
 
@@ -40,7 +40,6 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
             - `cone` internal angle and snapping angle can be configured
 - Tokens
     - Custom `distanceTo` function with support for token depth, all token shapes, and all grid types
-        - Rounds results to nearest tenth
     - [experimental] Custom `onOppositeSides` function logic for flanking that allows overriding the default logic to instead compare the intersection angles of center to center lines in 3D with a ellipsoid representation of the flankee
 - Auras
     - Only activate on grids with units of `'ft'`, `'feet'`, or `''`
