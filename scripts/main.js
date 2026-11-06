@@ -91,7 +91,6 @@ Hooks.once('init', () => {
 	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: raycast.raycast, distance: distance.distance});
 });
 
-// setup new scene having unbounded elevations
 Hooks.on("preCreateScene", (scene, data, options, userId) => {
 	if (game.user.id !== userId) return;
 	const updates = {};

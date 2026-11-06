@@ -8,7 +8,7 @@ export function get(key) {
 }
 
 export function set(key, value) {
-	settingCache.set(key, value);
+	rem(key);
 	return game.settings.set('f2e-grid-enhancements', key, value);
 }
 

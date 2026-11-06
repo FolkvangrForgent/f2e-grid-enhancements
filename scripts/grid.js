@@ -359,7 +359,8 @@ export function Token_object_distanceTo(wrapped, self, target, opts) {
 }
 
 export function Token_object__onClickLeft2(wrapped, self, event) {
-	const requiresReach = game.pf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses') ?? game.sf2e.settings.automation.reachEnforcement.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses');
+	const reachSettings = (game.pf2e ?? game.sf2e)?.settings?.automation?.reachEnforcement;
+	const requiresReach = reachSettings?.has(self.actor?.isOfType('loot') ? (self.actor.isLoot ? 'loot' : 'merchants') : 'corpses');
 	if (!self.document.isSecret && requiresReach && !self.document.isOwner && self.actor?.isLootableBy(game.user)) {
 		const inReach = [...new Set([self.layer.controlled, game.user.character?.getActiveTokens(true, false) ?? []].flat())].some(
 			(token) =>
@@ -624,7 +625,7 @@ export function Region_layer__onDragLeftMove(wrapped, self, event) {
 }
 
 export function Scene_document_canHaveAuras(wrapped, self) {
-	return ['', 'ft', 'feet'].includes(self.grid.units.toLowerCase());
+	return ['', 'ft', 'feet'].includes((self.grid.units ?? '').toLowerCase());
 }
 
 export function Aura_renderer_draw(wrapped, self, showBorder) {
@@ -638,8 +639,12 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		self.border.visible = false;
 		return;
 	}
+	const half_width = self.token.mechanicalBounds.width / 2;
+	const half_height = self.token.mechanicalBounds.height / 2;
+	const snapped = self.token.document.getSnappedPosition();
+	const origin = self.token.document.scene.grid.isGridless ? {x: snapped.x, y: snapped.y} : self.token.document.scene.grid.getTopLeftPoint(self.token.document._positionToGridOffset());
 	// clear initial border
-	if ((self.radius !== self.border_radius || self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height)) {
+	if (self.radius !== self.border_radius || self.token.document.shape !== self.border_shape || self.token.document.width !== self.border_width || self.token.document.height !== self.border_height) {
 		self.border_radius = self.radius
 		self.border_shape = self.token.document.shape
 		self.border_width = self.token.document.width
@@ -648,19 +653,17 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 	}
 	// Create aura border (token base type and polygon type didn't work for some reason)
 	if (self.border.geometry.graphicsData.length === 0 && self.appearance.border?.color != null && self.appearance.border?.alpha != null) {
-		let polygons = tokenAuraOffsetPolygons(self.token, self.radius, false)
+		const polygons = tokenAuraOffsetPolygons(self.token, self.radius, false);
 		if (polygons[0] != null) {
-			// polygons are in scene space but the border is positioned relative to the token center
-			const center_x = self.token.document.x + self.token.mechanicalBounds.width / 2;
-			const center_y = self.token.document.y + self.token.mechanicalBounds.height / 2;
+			const center_x = origin.x + half_width;
+			const center_y = origin.y + half_height;
 			const border_polygon = new PIXI.Polygon(polygons[0].points.map((value, index) => value - (index % 2 === 0 ? center_x : center_y)));
 			self.border.lineStyle(self.token.document.scene.grid.thickness, self.appearance.border?.color, self.appearance.border?.alpha).drawShape(border_polygon);
 		}
+		// TODO aura texture support
 	}
-	// shift aura into the correct position here (fixes hover ghost)
-	self.x = self.token.mechanicalBounds.width / 2;
-	self.y = self.token.mechanicalBounds.height / 2;
-	// TODO aura texture support if anything uses that?
+	self.x = half_width + (origin.x - snapped.x);
+	self.y = half_height + (origin.y - snapped.y);
 	// show or hide border
 	self.border.visible = showBorder;
 }
