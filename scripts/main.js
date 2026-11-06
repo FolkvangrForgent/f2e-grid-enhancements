@@ -7,6 +7,7 @@ import * as setting from './setting.js';
 CONFIG.F2e = {
 	Token: {
 		object: CONFIG.Token.objectClass.prototype,
+		document: CONFIG.Token.documentClass.prototype,
 	},
 	Scene: {
 		document: CONFIG.Scene.documentClass.prototype,
@@ -37,20 +38,22 @@ function patchFunction(target_function_name) {
 }
 
 Hooks.once('libWrapper.Ready', () => {
+	// [ hex & square & gridless ] Custom flanking
+	patchFunction('CONFIG.F2e.Token.object.onOppositeSides');
 	// [ hex & square & gridless ] Custom distance to measurement for 3D support
 	patchFunction('CONFIG.F2e.Token.object.distanceTo');
-	// [ hex & square & gridless ] Custom chat template placement
-	patchFunction('CONFIG.F2e.Region.layer.placeRegion');
-	// [ hex & square & gridless ] Custom chat template snap point
+	// [ hex & square & gridless ] Reach enforcement support
+	patchFunction('CONFIG.F2e.Token.object._onClickLeft2');
+	// [ hex ] Tiny token snap points
+	patchFunction('CONFIG.F2e.Token.document.getSnappedPosition');
+	// [ hex & square & gridless ] Chat template snap point
 	patchFunction('CONFIG.F2e.Region.object.snappingMode');
 	// [ hex & square ] Rules accurate lines
 	patchFunction('CONFIG.F2e.Region.object._getCoveredGridSpaceOffsets');
-	// [ hex & square & gridless ] Custom region point hacky support & Custom cone and line region rotation snapping
+	// [ hex & square & gridless ] Chat template placement
+	patchFunction('CONFIG.F2e.Region.layer.placeRegion');
+	// [ hex & square & gridless ] Region cone and line rotation snapping & point support
 	patchFunction('CONFIG.F2e.Region.layer._onDragLeftMove');
-	// [ hex & square & gridless ] Custom flanking
-	patchFunction('CONFIG.F2e.Token.object.onOppositeSides');
-	// [ hex & square & gridless ] Custom Reach enforcement support
-	patchFunction('CONFIG.F2e.Token.object._onClickLeft2');
 	// Refresh regions created before wrapping
 	refresh.regions();
 });

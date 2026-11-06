@@ -57,6 +57,7 @@ This module aims to enhance the use of grids while using the PF2e and SF2e syste
 
 - Tokens
     - Reach enforcement support
+    - Additional tiny token snap points
 - Auras
     - Support via extending system implementation
 

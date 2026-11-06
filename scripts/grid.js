@@ -380,6 +380,27 @@ export function Token_object__onClickLeft2(wrapped, self, event) {
 	return wrapped(event);
 }
 
+export function Token_document_getSnappedPosition(wrapped, self, data) {
+	const snapped = wrapped(data);
+	const {x, y, width, height} = {x: self.x, y: self.y, width: self.width, height: self.height, ...data};
+	if (!self.scene?.grid?.isHexagonal || width >= 1 || height >= 1) return snapped;
+	const half_width = width * self.scene.grid.size / 2;
+	const half_height = height * self.scene.grid.size / 2;
+	const origin = {x: x + half_width, y: y + half_height};
+	const center = self.scene.grid.getCenterPoint(origin);
+	let point = center;
+	let distance = (center.x - origin.x) ** 2 + (center.y - origin.y) ** 2;
+	for (const vertex of self.scene.grid.getVertices(origin)) {
+		const candidate_point = {x: (center.x + vertex.x) / 2, y: (center.y + vertex.y) / 2};
+		const candidate_distance = (candidate_point.x - origin.x) ** 2 + (candidate_point.y - origin.y) ** 2;
+		if (candidate_distance < distance) {
+			point = candidate_point;
+			distance = candidate_distance;
+		}
+	}
+	return {...snapped, x: point.x - half_width, y: point.y - half_height};
+}
+
 export function Region_object_snappingMode(wrapped, self){
 	switch (self.areaShape) {
 		case 'point':
