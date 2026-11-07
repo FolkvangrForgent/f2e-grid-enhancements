@@ -37,6 +37,9 @@ export function raycast(scene, origin, destination, {
 		let limitedForgiven = false;
 		// loop through every wall
 		for ( const wall of scene.walls ) {
+			const flags = wall.flags?.['f2e-grid-enhancements'];
+			const top = flags?.['top-enabled'] ? (flags?.['top-elevation'] ?? Infinity) : Infinity;
+			const bottom = flags?.['bottom-enabled'] ? (flags?.['bottom-elevation'] ?? -Infinity) : -Infinity;
 			// cheapest checks first
 			if ( wall.isDoor && wall.isOpen ) continue;
 			const edge = wall.edge;
@@ -55,7 +58,7 @@ export function raycast(scene, origin, destination, {
 						const level = scene.levels.get(levelIdentifier);
 						if ( !level ) continue;
 						resolved = true;
-						if ( (level.elevation.bottom <= maxZ) && (level.elevation.top > minZ) ) {
+						if ( (bottom ?? level.elevation.bottom <= maxZ) && (top ?? level.elevation.top > minZ) ) {
 							spans = true;
 							break;
 						}
@@ -66,19 +69,25 @@ export function raycast(scene, origin, destination, {
 			const intersection = foundry.utils.lineSegmentIntersection(origin, destination, edge.a, edge.b);
 			if ( !intersection || (intersection.t0 <= tMin) || (intersection.t0 > tMax) ) continue;
 			intersection.elevation = origin.elevation + (intersection.t0 * dZ);
-			if ( dZ && wall.levels?.size ) {
-				let spans = false;
-				let resolved = false;
-				for ( const levelIdentifier of wall.levels ) {
-					const level = scene.levels.get(levelIdentifier);
-					if ( !level ) continue;
-					resolved = true;
-					if ( (level.elevation.bottom <= intersection.elevation) && (level.elevation.top > intersection.elevation) ) {
-						spans = true;
-						break;
+			if ( dZ ) {
+				if ( wall.levels?.size ) {
+					let spans = false;
+					let resolved = false;
+					for ( const levelIdentifier of wall.levels ) {
+						const level = scene.levels.get(levelIdentifier);
+						if ( !level ) continue;
+						resolved = true;
+						if ( (bottom ?? level.elevation.bottom <= intersection.elevation) && (top ?? level.elevation.top > intersection.elevation) ) {
+							spans = true;
+							break;
+						}
+					}
+					if ( !spans && resolved ) continue;
+				} else {
+					if ( ( bottom ?? -Infinity > intersection.elevation) || (top ?? Infinity <= intersection.elevation) ) {
+						continue;
 					}
 				}
-				if ( !spans && resolved ) continue;
 			}
 			if ( edge.direction && (edge.direction === edge.orientPoint(origin)) ) continue;
 			if ( edge.threshold && edge.applyThreshold(type, origin) ) continue;

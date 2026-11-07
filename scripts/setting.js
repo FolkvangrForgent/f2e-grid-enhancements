@@ -16,16 +16,15 @@ export function rem(key) {
 	settingCache.delete(key);
 }
 
-export function register(key, type, value, opts = {}) {
-	const {onChange, ...options} = opts;
+export function register(key, type, options = {}) {
+	const {onChange, ...config} = options;
 	game.settings.register('f2e-grid-enhancements', key, {
 		name: `f2e-grid-enhancements.setting.${key}.name`,
 		hint: `f2e-grid-enhancements.setting.${key}.hint`,
 		scope: 'world',
 		config: true,
 		type,
-		default: value,
-		...options,
+		...config,
 		onChange: (...args) => {
 			rem(key);
 			onChange?.(...args);

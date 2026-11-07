@@ -1,6 +1,6 @@
-import * as distance from './distance.js';
-import * as raycast from './raycast.js';
-import * as setting from './setting.js';
+import * as distance from '../distance.js';
+import * as raycast from '../raycast.js';
+import * as setting from '../setting.js';
 
 const PHI = Math.PI * (3 - Math.sqrt(5));
 
@@ -344,7 +344,7 @@ function traitsCollisionTypes(traits) {
 
 export function Token_object_distanceTo(wrapped, self, target, opts) {
 	let discountFunction = undefined;
-	if (opts?.reach === 10 && setting.get('reach-exception')) {
+	if (opts?.reach === 10 && setting.get('f2e.reach-exception')) {
 		discountFunction = (grid, path) => {
 			if (grid.distance === 5
 				&& path.diagonals > 1
@@ -442,7 +442,7 @@ export function Region_object__getCoveredGridSpaceOffsets(wrapped, self) {
 		const step_x = d_x / d_max;
 		const step_y = d_y / d_max;
 		const steps = Math.ceil(length) + 1;
-		const insert_corners = self.scene.grid.diagonals === CONST.GRID_DIAGONALS.ILLEGAL || self.scene.grid.diagonals === CONST.GRID_DIAGONALS.RECTILINEAR && setting.get('line-region-rectilinear-corners');
+		const insert_corners = self.scene.grid.diagonals === CONST.GRID_DIAGONALS.ILLEGAL || self.scene.grid.diagonals === CONST.GRID_DIAGONALS.RECTILINEAR && setting.get('f2e.square.line-region-rectilinear-corners');
 		// cost tracking
 		let cost = 1;
 		let diagonals = 0;
@@ -517,7 +517,7 @@ export function Region_object__getCoveredGridSpaceOffsets(wrapped, self) {
 			previous_point = point;
 		}
 		// check if adding extra straight offsets is valid
-		if (setting.get('line-region-padding')) {
+		if (setting.get('f2e.square.line-region-padding')) {
 			let d_i = 0;
 			let d_j = 0;
 			if (Math.abs(d_y) > Math.abs(d_x)) {
@@ -578,7 +578,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 				...data,
 				shapes: data.shapes.map((shape) => {
 					if (shape.type !== 'cone' || shape.angle !== 90) return shape;
-					return {...shape, angle: setting.get(`${canvas?.grid?.isHexagonal ? 'hex' : canvas?.grid?.isSquare ? 'square' : 'gridless'}-cone-template-angle`)};
+					return {...shape, angle: setting.get(`f2e.${canvas?.grid?.isHexagonal ? 'hex' : canvas?.grid?.isSquare ? 'square' : 'gridless'}.cone-template-angle`)};
 				})
 			}: data;
 		const patchedOptions = {...options};
@@ -586,7 +586,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 		patchedOptions.onMove = function (...args) {
 			const { event, position, preview, shape, snap, document } = args[0];
 			if (placement.aiming && (shape.type === 'cone' || shape.type === 'line')) {
-				const angle = shape.type === 'cone' ? setting.get(`${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+				const angle = shape.type === 'cone' ? setting.get(`f2e.${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}.cone-snapping-angle`) : 5;
 				const rotation = Math.toDegrees(Math.atan2(position.y - shape.y, position.x - shape.x));
 				const snapped = event.ctrlKey || event.metaKey || angle === 0 ? rotation : rotation.toNearest(angle);
 				shape.updateSource({ rotation: snapped });
@@ -602,7 +602,7 @@ export function Region_layer_placeRegion(wrapped, self, data, options = {}) {
 		patchedOptions.onRotate = function (...args) {
 			const { event, shape, document } = args[0];
 			if (shape.type === 'cone' || shape.type === 'line') {
-				const angle = shape.type === 'cone' ? setting.get(`${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+				const angle = shape.type === 'cone' ? setting.get(`f2e.${document.parent.grid.isHexagonal ? 'hex' : document.parent.grid.isSquare ? 'square' : 'gridless'}.cone-snapping-angle`) : 5;
 				const free = event.ctrlKey || event.metaKey || angle === 0;
 				const step = free ? 1 : angle;
 				const rotation = shape.rotation + step * Math.sign(event.deltaY);
@@ -637,7 +637,7 @@ export function Region_layer__onDragLeftMove(wrapped, self, event) {
 		event.interactionData.shape.updateSource({radius: canvas.dimensions.distance * canvas.dimensions.distancePixels / 2});
 		self._updateDragPreview(event);
 	} else if (self.templateMode && (event.interactionData.shape?.type === 'line' || event.interactionData.shape?.type === 'cone')) {
-		const angle = event.interactionData.shape.type === 'cone' ? setting.get(`${canvas.scene.grid.isHexagonal ? 'hex' : canvas.scene.grid.isSquare ? 'square' : 'gridless'}-cone-snapping-angle`) : 5;
+		const angle = event.interactionData.shape.type === 'cone' ? setting.get(`f2e.${canvas.scene.grid.isHexagonal ? 'hex' : canvas.scene.grid.isSquare ? 'square' : 'gridless'}.cone-snapping-angle`) : 5;
 		const pointer = event.getLocalPosition(self);
 		const raw_rotation = Math.toDegrees(Math.atan2(pointer.y - event.interactionData.shape.y, pointer.x - event.interactionData.shape.x));
 		const rotation = event.ctrlKey || event.metaKey || angle === 0 ? raw_rotation : raw_rotation.toNearest(angle);
@@ -659,7 +659,7 @@ export function Aura_renderer_draw(wrapped, self, showBorder) {
 		return;
 	}
 	// handle defeated creatures
-	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token)) {
+	if (setting.get('f2e.aura.defeated-disable') && tokenDefeated(self.token)) {
 		self.border.visible = false;
 		return;
 	}
@@ -698,7 +698,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 		return false;
 	}
 	// handle defeated creatures
-	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token.object)) {
+	if (setting.get('f2e.aura.defeated-disable') && tokenDefeated(self.token.object)) {
 		return false;
 	}
 	// If the token is the one emitting the aura, return true early
@@ -765,7 +765,7 @@ export function Aura_token_containsToken(wrapped, self, token) {
 }
 
 export function Token_object_onOppositeSides(wrapped, self, flanker, other, flankee) {
-	if (!setting.get(`flanking-${flankee.document.scene.grid.isHexagonal ? 'hex' : flankee.document.scene.grid.isSquare ? 'square' : 'gridless'}-override`)) {
+	if (!setting.get(`f2e.flanking.${flankee.document.scene.grid.isHexagonal ? 'hex' : flankee.document.scene.grid.isSquare ? 'square' : 'gridless'}-override`)) {
 		return wrapped(flanker, other, flankee)
 	}
 	// flanker data
@@ -814,7 +814,7 @@ export function Token_object_onOppositeSides(wrapped, self, flanker, other, flan
 	vector_1_x = vector_1_x / vector_1_magnitude;
 	vector_1_y = vector_1_y / vector_1_magnitude;
 	vector_1_z = vector_1_z / vector_1_magnitude;
-	const flanking_threshold = Math.PI - setting.get('flanking-angle') / 360 * Math.PI;
+	const flanking_threshold = Math.PI - setting.get('f2e.flanking.angle') / 360 * Math.PI;
 	for (const point of points) {
 		let vector_0_x = point.x - flankee_x;
 		let vector_0_y = point.y - flankee_y;
@@ -837,7 +837,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		return;
 	}
 	// handle defeated creatures
-	if (setting.get('aura-defeated-disable') && tokenDefeated(self.token)) {
+	if (setting.get('f2e.aura.defeated-disable') && tokenDefeated(self.token)) {
 		return;
 	}
 	// get token polygons
@@ -846,7 +846,7 @@ export function Aura_renderer_highlight(wrapped, self) {
 		return;
 	}
 	// draw polygons
-	if (setting.get('aura-collisions-highlight')) {
+	if (setting.get('f2e.aura.collisions-highlight')) {
 		const token_center = tokenCenterBottom(self.token);
 		const collision_radius = self.radius * self.token.document.scene.grid.size / self.token.document.scene.grid.distance + Math.max(self.token.document.width, self.token.document.height) * self.token.document.scene.grid.size;
 		// get levels to add wall collisions from
