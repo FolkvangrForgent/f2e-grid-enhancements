@@ -58,7 +58,7 @@ export function raycast(scene, origin, destination, {
 						const level = scene.levels.get(levelIdentifier);
 						if ( !level ) continue;
 						resolved = true;
-						if ( (bottom ?? level.elevation.bottom <= maxZ) && (top ?? level.elevation.top > minZ) ) {
+						if ( ((bottom ?? level.elevation.bottom) <= maxZ) && ((top ?? level.elevation.top) > minZ) ) {
 							spans = true;
 							break;
 						}
@@ -77,14 +77,14 @@ export function raycast(scene, origin, destination, {
 						const level = scene.levels.get(levelIdentifier);
 						if ( !level ) continue;
 						resolved = true;
-						if ( (bottom ?? level.elevation.bottom <= intersection.elevation) && (top ?? level.elevation.top > intersection.elevation) ) {
+						if ( ((bottom ?? level.elevation.bottom) <= intersection.elevation) && ((top ?? level.elevation.top) > intersection.elevation) ) {
 							spans = true;
 							break;
 						}
 					}
 					if ( !spans && resolved ) continue;
 				} else {
-					if ( ( bottom ?? -Infinity > intersection.elevation) || (top ?? Infinity <= intersection.elevation) ) {
+					if ( ((bottom ?? -Infinity) > intersection.elevation) || ((top ?? Infinity)<= intersection.elevation) ) {
 						continue;
 					}
 				}

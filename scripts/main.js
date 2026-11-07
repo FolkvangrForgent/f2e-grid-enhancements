@@ -134,3 +134,23 @@ Hooks.on('renderWallConfig', (app, element) => {
 		element.querySelector('form')?.append(fieldset);
 	}
 });
+
+patch.add('foundry.canvas.geometry.ClockwiseSweepPolygon.prototype._identifyEdges', (wrapped, polygon, ...args) => {
+	const result = wrapped(...args);
+	const elevation = polygon.origin?.elevation ?? 0;
+	for ( const edge of [...polygon.edges] ) {
+		const wall = edge.object;
+		if ( wall?.documentName !== 'Wall' ) continue;
+		const flags = wall.flags?.['f2e-grid-enhancements'];
+		const top = flags?.['top-enabled'] ? (flags['top-elevation'] ?? Infinity) : Infinity;
+		const bottom = flags?.['bottom-enabled'] ? (flags['bottom-elevation'] ?? -Infinity) : -Infinity;
+		if ( !((bottom <= elevation) && (top > elevation)) ) polygon.edges.delete(edge);
+	}
+	return result;
+});
+
+Hooks.on('updateWall', (wall, changes) => {
+	if ( foundry.utils.hasProperty(changes, 'flags.f2e-grid-enhancements') ) {
+		canvas.perception.update({ initializeVision: true, initializeLighting: true, initializeSounds: true });
+	}
+});

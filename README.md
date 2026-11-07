@@ -16,7 +16,11 @@ This module adds various features to enhance the functionality of grids in vario
     - (GM) New scene default level top elevation
     - (GM) New scene default level bottom elevation
 - Walls
-    - Configurable optional wall elevation (See details below)
+    - Configurable optional wall elevation (See more details below)
+        - Vision, Lighting, and Sound support
+            - Only blocked by walls the exist at the tested elevation (eye elevation for vision)
+        - ClockwiseSweepPolygons support
+            - Only blocked by walls the exist at the tested elevation
 
 ## Specific Grid Enhancements
 
