@@ -1,10 +1,17 @@
 import * as distance from './distance.js';
+import * as elevation from './elevation.js';
 import * as patch from './patch.js';
 import * as raycast from './raycast.js';
 import * as setting from './setting.js';
 
 Hooks.once('init', () => {
 	// setting
+	setting.register('general.elevation-visualization',  new foundry.data.fields.BooleanField({
+		required: true,
+		persisted: true,
+		nullable: false,
+		initial: true
+	}), { requiresReload: true });
 	setting.register('general.default-grid-type', new foundry.data.fields.NumberField({
 		required: true,
 		persisted: true,
@@ -42,6 +49,8 @@ Hooks.once('init', () => {
 		integer: false,
 		extension: -Infinity
 	}));
+	// elevation
+	elevation.initialize();
 	// api
 	game.modules.get('f2e-grid-enhancements').api = Object.freeze({raycast: raycast.raycast, distance: distance.distance});
 	// system
