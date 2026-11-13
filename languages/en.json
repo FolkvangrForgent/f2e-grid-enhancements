@@ -1,83 +1,106 @@
 {
 	"f2e-grid-enhancements": {
 		"name": "PF2e & SF2e - Grid Enhancements",
-		"region": {
-			"hex": "Draw Hex",
-			"square": "Draw Square",
-			"point": "Draw Point"
+		"f2e": {
+			"region": {
+				"hex": "Draw Hex",
+				"square": "Draw Square",
+				"point": "Draw Point"
+			}
+		},
+		"general": {
+			"wall-elevation": "Wall Elevation"
 		},
 		"setting": {
-			"hex-cone-template-angle": {
-				"name": "Hex Cone Template Angle",
-				"hint": "The default internal angle to use for the cone template on hex grids."
+			"general": {
+				"default-grid-type": {
+					"name": "Default Grid Type",
+					"hint": "The default grid type to use when making a new scene."
+				},
+				"default-level-name": {
+					"name": "Default Level Name",
+					"hint": "The default level name to use when making a new scene. Unset uses FoundryVTT value."
+				},
+				"default-level-top-elevation": {
+					"name": "Default Level Top Elevation",
+					"hint": "The default level top elevation to use when making a new scene.  Unset is +Infinity."
+				},
+				"default-level-bottom-elevation": {
+					"name": "Default Level Bottom Elevation",
+					"hint": "The default level bottom elevation to use when making a new scene. Unset is -Infinity."
+				}
 			},
-			"square-cone-template-angle": {
-				"name": "Square Cone Template Angle",
-				"hint": "The default internal angle to use for the cone template on square grids."
-			},
-			"gridless-cone-template-angle": {
-				"name": "Gridless Cone Template Angle",
-				"hint": "The default internal angle to use for the cone template on gridless grids."
-			},
-			"hex-cone-snapping-angle": {
-				"name": "Hex Cone Snapping Angle",
-				"hint": "The default snapping angle to use for the cone template on hex grids. 0 disables snapping."
-			},
-			"square-cone-snapping-angle": {
-				"name": "Square Cone Snapping Angle",
-				"hint": "The default snapping angle to use for the cone template on square grids. 0 disables snapping."
-			},
-			"gridless-cone-snapping-angle": {
-				"name": "Gridless Cone Snapping Angle",
-				"hint": "The default snapping angle to use for the cone template on gridless grids. 0 disables snapping."
-			},
-			"aura-collisions-highlight": {
-				"name": "Aura Collision Highlighting",
-				"hint": "Show wall collisions on the current token level for aura highlights."
-			},
-			"aura-defeated-disable": {
-				"name": "Disable Auras on Defeated Creatures",
-				"hint": "Auras do not emit or appear on defeated or dead creatures."
-			},
-			"line-region-padding": {
-				"name": "Line Region Padding",
-				"hint": "Add extra straight sections to lines to pad to the full distance on square grids."
-			},
-			"line-region-rectilinear-corners": {
-				"name": "Line Region Rectilinear Corners",
-				"hint": "Add corners to line regions using the Covered Grid Spaces settings when Rectilinear is used on square grids."
-			},
-			"default-grid-type": {
-				"name": "Default Grid Type",
-				"hint": "The default grid type to use when making a new scene."
-			},
-			"default-top-elevation": {
-				"name": "Default Level Top Elevation",
-				"hint": "The default level top elevation to use when making a new scene.  Unset is +Infinity."
-			},
-			"default-bottom-elevation": {
-				"name": "Default Level Bottom Elevation",
-				"hint": "The default level bottom elevation to use when making a new scene. Unset is -Infinity."
-			},
-			"reach-exception": {
-				"name": "Default Reach Exception",
-				"hint": "Use the 10 foot reach exception as called out in the rules on square and hex grids."
-			},
-			"flanking-angle": {
-				"name": "[Experimental] Custom Flanking Angle",
-				"hint": "Angle to use to consider an opposing token to be flanking."
-			},
-			"flanking-gridless-override": {
-				"name": "[Experimental] Gridless Custom Flanking Logic",
-				"hint": "Use the custom flanking logic on gridless maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
-			},
-			"flanking-hex-override": {
-				"name": "[Experimental] Hex Custom Flanking Logic",
-				"hint": "Use the custom flanking logic on hex maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
-			},
-			"flanking-square-override": {
-				"name": "[Experimental] Square Custom Flanking Logic",
-				"hint": "Use the custom flanking logic on square maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
+			"f2e": {
+				"hex": {
+					"cone-template-angle": {
+						"name": "Hex Cone Template Angle",
+						"hint": "The default internal angle to use for the cone template on hex grids."
+					},
+					"cone-snapping-angle": {
+						"name": "Hex Cone Snapping Angle",
+						"hint": "The default snapping angle to use for the cone template on hex grids. 0 disables snapping."
+					}
+				},
+				"square": {
+					"cone-template-angle": {
+						"name": "Square Cone Template Angle",
+						"hint": "The default internal angle to use for the cone template on square grids."
+					},
+					"cone-snapping-angle": {
+						"name": "Square Cone Snapping Angle",
+						"hint": "The default snapping angle to use for the cone template on square grids. 0 disables snapping."
+					},
+					"line-region-padding": {
+						"name": "Line Region Padding",
+						"hint": "Add extra straight sections to lines to pad to the full distance on square grids."
+					},
+					"line-region-rectilinear-corners": {
+						"name": "Line Region Rectilinear Corners",
+						"hint": "Add corners to line regions using the Covered Grid Spaces settings when Rectilinear is used on square grids."
+					}
+				},
+				"gridless": {
+					"cone-template-angle": {
+						"name": "Gridless Cone Template Angle",
+						"hint": "The default internal angle to use for the cone template on gridless grids."
+					},
+					"cone-snapping-angle": {
+						"name": "Gridless Cone Snapping Angle",
+						"hint": "The default snapping angle to use for the cone template on gridless grids. 0 disables snapping."
+					}
+				},
+				"aura": {
+					"collisions-highlight": {
+						"name": "Aura Collision Highlighting",
+						"hint": "Show wall collisions on the current token level for aura highlights."
+					},
+					"defeated-disable": {
+						"name": "Disable Auras on Defeated Creatures",
+						"hint": "Auras do not emit or appear on defeated or dead creatures."
+					}
+				},
+				"reach-exception": {
+					"name": "Default Reach Exception",
+					"hint": "Use the 10 foot reach exception as called out in the rules on square and hex grids."
+				},
+				"flanking": {
+					"angle": {
+						"name": "[Experimental] Custom Flanking Angle",
+						"hint": "Angle to use to consider an opposing token to be flanking."
+					},
+					"gridless-override": {
+						"name": "[Experimental] Gridless Custom Flanking Logic",
+						"hint": "Use the custom flanking logic on gridless maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
+					},
+					"hex-override": {
+						"name": "[Experimental] Hex Custom Flanking Logic",
+						"hint": "Use the custom flanking logic on hex maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
+					},
+					"square-override": {
+						"name": "[Experimental] Square Custom Flanking Logic",
+						"hint": "Use the custom flanking logic on square maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
+					}
+				}
 			}
 		}
 	}

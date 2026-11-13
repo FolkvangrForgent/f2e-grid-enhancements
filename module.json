@@ -17,24 +17,6 @@
 		}
 	],
 	"relationships": {
-		"systems": [
-			{
-				"id": "pf2e",
-				"type": "system",
-				"compatibility": {
-					"minimum": "8.2.0",
-					"verified": "8.7.0"
-				}
-			},
-			{
-				"id": "sf2e",
-				"type": "system",
-				"compatibility": {
-					"minimum": "1.2.0",
-					"verified": "1.7.0"
-				}
-			}
-		],
 		"requires": [
 			{
 				"id": "lib-wrapper",
@@ -54,11 +36,6 @@
 			"lang": "en",
 			"name": "English",
 			"path": "languages/en.json"
-		},
-		{
-			"lang": "pl",
-			"name": "Polski",
-			"path": "languages/pl.json"
 		}
 	],
 	"packs": [
