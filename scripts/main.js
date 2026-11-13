@@ -1,7 +1,7 @@
 import * as distance from './distance.js';
+import * as patch from './patch.js';
 import * as raycast from './raycast.js';
 import * as setting from './setting.js';
-import * as patch from './patch.js';
 
 Hooks.once('init', () => {
 	// setting
@@ -23,8 +23,8 @@ Hooks.once('init', () => {
 	setting.register('general.default-level-name', new foundry.data.fields.StringField({
 		required: true,
 		persisted: true,
-		nullable: false,
-		initial: 'SCENE.InitialLevel'
+		nullable: true,
+		initial: null
 	}));
 	setting.register('general.default-level-top-elevation', new foundry.data.fields.ExtendedNumberField({
 		required: true,
@@ -38,7 +38,7 @@ Hooks.once('init', () => {
 		required: true,
 		persisted: true,
 		nullable: true,
-		initial: null,
+		initial: 0,
 		integer: false,
 		extension: -Infinity
 	}));
@@ -76,7 +76,7 @@ Hooks.on('preCreateScene', (scene, data, options, userId) => {
 		} else {
 			updates.levels = [{
 				_id: foundry.utils.randomID(),
-				name: setting.get('general.default-level-name'),
+				name: setting.get('general.default-level-name') ?? 'SCENE.InitialLevel',
 				elevation
 			}];
 		}

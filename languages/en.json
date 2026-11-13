@@ -17,6 +17,10 @@
 					"name": "Default Grid Type",
 					"hint": "The default grid type to use when making a new scene."
 				},
+				"default-level-name": {
+					"name": "Default Level Name",
+					"hint": "The default level name to use when making a new scene. Unset uses FoundryVTT value."
+				},
 				"default-level-top-elevation": {
 					"name": "Default Level Top Elevation",
 					"hint": "The default level top elevation to use when making a new scene.  Unset is +Infinity."
