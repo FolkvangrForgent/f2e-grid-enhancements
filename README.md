@@ -16,7 +16,15 @@ This module adds various features to enhance the functionality of grids in vario
     - (GM) New scene default level top elevation
     - (GM) New scene default level bottom elevation
 - Walls
-    - Configurable optional wall elevation (See more details below)
+    - Configurable optional wall elevation
+- Vision
+    - Basic wall elevation support
+- Lighting
+    - Basic wall elevation support
+- Sound
+    - Basic wall elevation support
+- Move
+    - Basic wall elevation support
 
 ## Specific Grid Enhancements
 
@@ -30,6 +38,10 @@ This module adds various features to enhance the functionality of grids in vario
 ## Wall Elevation
 
 This module adds optional support for wall elevation that can be enabled or disabled on a per wall per top/bottom basis. This wall height is ingested by the raycasting API provided by this module. By default walls that don't have top and bottom elevations set do the following when being raycast against or providing visualization: For each level a wall exists in assume there is a wall that has it's top and bottom elevation set to the top and bottom elevation of that level, if there are no levels a wall exists from -Infinity to Infinity.
+
+### ClockwiseSweepPolygon
+
+Wall elevation currently affects ClockwiseSweepPolygons removing walls that do not span the exact elevation. This allows basic support for visualization, better visualization is planed but will only come out when I am happy with it.
 
 ## AI Tools
 
