@@ -1,8 +1,13 @@
 {
 	"devDependencies": {
+		"@biomejs/biome": "2.6.8",
 		"@foundryvtt/foundryvtt-cli": "^3.0.5"
 	},
 	"scripts": {
-		"build:packs": "node node_scripts/build-packs.mjs"
+		"build:module": "node node_scripts/build-module.mjs",
+		"build:packs": "node node_scripts/build-packs.mjs",
+		"clean": "node -e \"require('node:fs').rmSync('build', {recursive: true, force: true})\"",
+		"lint": "biome check --write",
+		"link": "node node_scripts/link-module.mjs"
 	}
 }

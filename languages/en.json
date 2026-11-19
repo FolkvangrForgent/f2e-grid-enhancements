@@ -1,21 +1,85 @@
 {
 	"f2e-grid-enhancements": {
-		"name": "PF2e & SF2e - Grid Enhancements",
-		"f2e": {
-			"region": {
-				"hex": "Draw Hex",
-				"square": "Draw Square",
-				"point": "Draw Point"
-			}
-		},
+		"name": "Grid Enhancements",
 		"general": {
-			"wall-elevation": "Wall Elevation"
+			"wall": {
+				"elevation": "Wall Elevation",
+				"elevation-inverted": "A wall's bottom elevation may not be above its top."
+			},
+			"token": {
+				"alternate": "Switch to {shape}"
+			},
+			"scene": {
+				"auto-change-level": "Change Levels by Elevation",
+				"auto-change-level-hint": "When a token's movement ends at an elevation within another level, move it to that level (as a Change Level region would); below the lowest level it goes to the lowest, above the highest to the highest. Only works while the levels stack one on the next, with no gaps or overlaps.",
+				"auto-change-level-unusable": "This scene's levels overlap, leave gaps or are only one, so tokens are not moved between them.",
+				"absolute-elevation": "Absolute Elevations",
+				"absolute-elevation-hint": "Show and enter elevations on this scene as they are stored, instead of relative to the viewed level's bottom (token and placeable HUDs, tooltips, ruler labels)."
+			},
+			"region": {
+				"optimize": "Optimize Shapes",
+				"optimized-already": "This Region has a single shape: there is nothing to optimize.",
+				"tiles": {
+					"create": "Create Shapes from Controlled Tiles",
+					"control": "Control the Tiles whose area you want as Shapes.",
+					"none": "You are not controlling any Tiles!",
+					"empty": "The controlled Tiles have no opaque area at this threshold.",
+					"options": {
+						"create": "Create Shapes",
+						"resolution": "Resolution",
+						"resolution-low": "Low",
+						"resolution-medium": "Medium",
+						"resolution-high": "High",
+						"resolution-full": "Full",
+						"smoothing": "Smoothing",
+						"smoothing-hint": "How much the outline is smoothed. 0 is unsmoothed.",
+						"threshold": "Threshold",
+						"threshold-hint": "How opaque a pixel must be to count. 0 is the tile rectangle."
+					}
+				}
+			},
+			"behavior": {
+				"barrier": {
+					"label": "Define Barrier",
+					"hint": "Barriers at the Region's bottom, top or sides with options for restriction types and directions.",
+					"directions": {
+						"both": "Both ways",
+						"in": "Only going into the Region",
+						"out": "Only going out of the Region"
+					},
+					"fields": {
+						"sides": "Sides",
+						"roof": {
+							"shape": "Roof",
+							"direction": "Direction",
+							"ridge": "Ridge Position",
+							"ridge-hint": "Where the ridge runs across the region (or across each tooth), in percent: 50 is a gable, 0 or 100 a shed (one face rising to that side), anything between a saltbox. Facing the direction, 0 is the left side.",
+							"teeth": "Teeth",
+							"teeth-hint": "How many times the roof repeats across the region: a sawtooth with the ridge at 0 or 100, a row of gables at 50.",
+							"lowerGable": "Lower Gable",
+							"lowerGable-hint": "How far up from the eaves each ridge end is a vertical gable end, in percent of the end's depth: 0 is a hip, 100 a gable, between a jerkinhead (half-hip).",
+							"upperGable": "Upper Gable",
+							"upperGable-hint": "How far down from the ridge each ridge end is a gable set back on the hip, in percent of the end's depth: a Dutch gable. The hip is what the two gables leave between them; together at 100 or more, the end is all gable.",
+							"pitch": "Pitch",
+							"pitch-hint": "How steeply the roof rises from its eaves at the region's bottom (flattened when the region's top is lower than its ridge).",
+							"show": "Show Roof"
+						}
+					},
+					"roofs": {
+						"none": "None",
+						"manual": "Manual",
+						"auto": "Auto"
+					},
+					"roofRange": "Eaves {eaves} · Ridge {ridge}"
+				}
+			}
 		},
 		"setting": {
 			"general": {
-				"elevation-visualization": {
-					"name": "Elevation Visualization",
-					"hint": "Basic visualization that removes walls that aren't present at the source elevation and adds walls from connected levels."
+				"title": "General",
+				"barrier-visualization": {
+					"name": "Barrier Visualization",
+					"hint": "Use barriers to draw light, darkness, vision, and sound areas in 3D. Including accurate shadows."
 				},
 				"default-grid-type": {
 					"name": "Default Grid Type",
@@ -23,18 +87,19 @@
 				},
 				"default-level-name": {
 					"name": "Default Level Name",
-					"hint": "The default level name to use when making a new scene. Unset uses FoundryVTT value."
+					"hint": "The default level name to use when making a new scene."
 				},
 				"default-level-top-elevation": {
 					"name": "Default Level Top Elevation",
-					"hint": "The default level top elevation to use when making a new scene.  Unset is +Infinity."
+					"hint": "The default level top elevation to use when making a new scene."
 				},
 				"default-level-bottom-elevation": {
 					"name": "Default Level Bottom Elevation",
-					"hint": "The default level bottom elevation to use when making a new scene. Unset is -Infinity."
+					"hint": "The default level bottom elevation to use when making a new scene."
 				}
 			},
 			"f2e": {
+				"title": "Pathfinder 2e & Starfinder 2e",
 				"hex": {
 					"cone-template-angle": {
 						"name": "Hex Cone Template Angle",
@@ -53,14 +118,6 @@
 					"cone-snapping-angle": {
 						"name": "Square Cone Snapping Angle",
 						"hint": "The default snapping angle to use for the cone template on square grids. 0 disables snapping."
-					},
-					"line-region-padding": {
-						"name": "Line Region Padding",
-						"hint": "Add extra straight sections to lines to pad to the full distance on square grids."
-					},
-					"line-region-rectilinear-corners": {
-						"name": "Line Region Rectilinear Corners",
-						"hint": "Add corners to line regions using the Covered Grid Spaces settings when Rectilinear is used on square grids."
 					}
 				},
 				"gridless": {
@@ -74,10 +131,6 @@
 					}
 				},
 				"aura": {
-					"collisions-highlight": {
-						"name": "Aura Collision Highlighting",
-						"hint": "Show wall collisions on the current token level for aura highlights."
-					},
 					"defeated-disable": {
 						"name": "Disable Auras on Defeated Creatures",
 						"hint": "Auras do not emit or appear on defeated or dead creatures."
@@ -86,24 +139,6 @@
 				"reach-exception": {
 					"name": "Default Reach Exception",
 					"hint": "Use the 10 foot reach exception as called out in the rules on square and hex grids."
-				},
-				"flanking": {
-					"angle": {
-						"name": "[Experimental] Custom Flanking Angle",
-						"hint": "Angle to use to consider an opposing token to be flanking."
-					},
-					"gridless-override": {
-						"name": "[Experimental] Gridless Custom Flanking Logic",
-						"hint": "Use the custom flanking logic on gridless maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
-					},
-					"hex-override": {
-						"name": "[Experimental] Hex Custom Flanking Logic",
-						"hint": "Use the custom flanking logic on hex maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
-					},
-					"square-override": {
-						"name": "[Experimental] Square Custom Flanking Logic",
-						"hint": "Use the custom flanking logic on square maps. This logic checks the surface intersections points on an ellipsoid representation of the target."
-					}
 				}
 			}
 		}

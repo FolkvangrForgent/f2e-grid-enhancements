@@ -1,0 +1,3 @@
+# WebAssembly SIMD (every browser Foundry supports has it): the compiler may vectorise loops with it
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]

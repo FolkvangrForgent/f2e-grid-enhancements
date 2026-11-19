@@ -1,2 +1,4 @@
 node_modules/
-packs/
+build/
+wasm/target/
+wasm/*.wasm
