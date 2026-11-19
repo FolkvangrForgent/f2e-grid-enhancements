@@ -1,11 +1,9 @@
-// Patching at anytime
-
 let libWrapperReady = false;
 const libWrapperQueue = [];
 Hooks.once('libWrapper.Ready', () => {
 	libWrapperReady = true;
 	for (const libWrapperFunc of libWrapperQueue) {
-		libWrapperFunc()
+		libWrapperFunc();
 	}
 	libWrapperQueue.length = 0;
 });
@@ -21,7 +19,7 @@ export function defer(callback) {
 export function add(target, func) {
 	defer(() => {
 		try {
-			libWrapper.register('f2e-grid-enhancements', target, function(wrapped, ...args) {
+			libWrapper.register('f2e-grid-enhancements', target, function (wrapped, ...args) {
 				try {
 					return func(wrapped, this, ...args);
 				} catch (error) {
@@ -34,7 +32,6 @@ export function add(target, func) {
 			console.error(`${game.i18n.localize('f2e-grid-enhancements.name')} | ${target} libWrapper.register failed`, error);
 		}
 	});
-
 }
 
 export function del(target) {

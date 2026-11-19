@@ -1,5 +1,3 @@
-// Caching verions of the base settings interactions
-
 const settingCache = new Map();
 
 export function get(key) {

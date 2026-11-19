@@ -39,11 +39,11 @@ jobs:
         with:
           node-version: 24
 
-      - name: Make Copendium Packs
-        run: npm ci &&npm run build:packs
+      - name: Build Module
+        run: npm ci && npm run build
 
       - name: Create Module Archive
-        run: zip -r ./module.zip module.json scripts/ languages/ packs/
+        run: cd build && zip -r ../module.zip .
 
       - name: Update Release With Files
         id: create_version_release

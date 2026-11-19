@@ -1,0 +1,41 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": ["scripts/**/*.js", "node_scripts/**/*.mjs", "**/*.json", "!package-lock.json"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 200
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"semicolons": "always",
+			"trailingCommas": "none",
+			"arrowParentheses": "asNeeded",
+			"bracketSpacing": false
+		},
+		"globals": ["foundry", "canvas", "game", "CONFIG", "CONST", "Hooks", "PIXI", "ClipperLib", "libWrapper", "ui", "Scene", "fromUuid"]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"correctness": {
+				"noUndeclaredVariables": "error",
+				"noUnusedVariables": "error",
+				"noUnusedImports": "error",
+				"noUnusedFunctionParameters": "off"
+			},
+			"suspicious": {
+				"noAssignInExpressions": "off"
+			}
+		}
+	}
+}

@@ -1,13 +1,13 @@
 {
 	"id": "f2e-grid-enhancements",
-	"title": "PF2e & SF2e - Grid Enhancements",
-	"description": "A collection of enhancements to make using hex, gridless and square maps in Pathfinder2e and Starfiner2e a better experience.",
+	"title": "Grid Enhancements",
+	"description": "A collection of enhancements and overhauls to make using hex, gridless and square maps a better experience.",
 	"version": "#{VERSION}#",
 	"url": "#{URL}#",
 	"manifest": "#{MANIFEST}#",
 	"download": "#{DOWNLOAD}#",
 	"compatibility": {
-		"minimum": "14.360",
+		"minimum": "14.370",
 		"verified": "14.370",
 		"maximum": "14"
 	},
@@ -28,9 +28,12 @@
 			}
 		]
 	},
-	"esmodules": [
-		"scripts/main.js"
-	],
+	"esmodules": ["scripts/main.js"],
+	"documentTypes": {
+		"RegionBehavior": {
+			"surface": {}
+		}
+	},
 	"languages": [
 		{
 			"lang": "en",
@@ -42,7 +45,7 @@
 		{
 			"name": "off-guard-toggle-pf2e",
 			"label": "Off Guard Toggle",
-			"path": "packs/off-guard-toggle-pf2e",
+			"path": "packs/f2e/off-guard-toggle-pf2e",
 			"type": "Item",
 			"ownership": {
 				"PLAYER": "OBSERVER",
@@ -53,7 +56,7 @@
 		{
 			"name": "off-guard-toggle-sf2e",
 			"label": "Off Guard Toggle",
-			"path": "packs/off-guard-toggle-sf2e",
+			"path": "packs/f2e/off-guard-toggle-sf2e",
 			"type": "Item",
 			"ownership": {
 				"PLAYER": "OBSERVER",
